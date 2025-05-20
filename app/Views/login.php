@@ -13,7 +13,7 @@
         <div class="text-center">
             <h1 class="text-4xl font-extrabold text-blue-700 tracking-wide">Helpdesk</h1>
             <!-- <p class="mt-2 text-gray-600 font-medium">Masuk ke sistem Anda</p> -->
-            <p class="mt-2 text-gray-600 font-light text-md">Pastikan akun anda telah terdaftar sebelumnya baru melakukan login ke dalam sistem!</p>
+            <!-- <p class="mt-2 text-gray-600 font-light text-md">Pastikan akun anda telah terdaftar sebelumnya baru melakukan login ke dalam sistem!</p> -->
 
         </div>
         <form id="loginForm" class="mt-8 space-y-6">

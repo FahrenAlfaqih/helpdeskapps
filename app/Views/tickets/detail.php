@@ -380,6 +380,7 @@
     const feedbackModal = document.getElementById('feedbackModal');
     const feedbackForm = document.getElementById('feedbackForm');
     const feedbackText = document.getElementById('feedback_text');
+    const feedbackRating = document.getElementById('feedback_rating');
 
     updateForm.addEventListener('submit', async (e) => {
         e.preventDefault();

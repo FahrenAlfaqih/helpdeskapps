@@ -25,11 +25,14 @@ $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
 
 // Users management group (Admin & Kepala Unit)
 $routes->group('users', ['filter' => 'auth'], function ($routes) {
-    $routes->get('', 'Users::index');
+    $routes->get('', 'Users::index');             // daftar user
+    $routes->get('create', 'Users::create');      // form buat user
     $routes->get('list', 'Users::listUsers');
     $routes->post('create', 'Users::createUser');
+    $routes->post('update', 'Users::updateUser');
     $routes->post('delete', 'Users::deleteUser');
 });
+
 
 $routes->group('tickets', ['filter' => 'auth'], function ($routes) {
     $routes->get('', 'Tickets::index');              // /tickets
@@ -54,8 +57,8 @@ $routes->group('tickets', ['filter' => 'auth'], function ($routes) {
     $routes->post('transfer/respond', 'Tickets::respondTransfer');
     $routes->get('transfer/list', 'Tickets::listTransfers');
 
-    $routes->post('feedback', 'Tickets::saveFeedback');
-    $routes->post('comment', 'Tickets::saveComment');
+    $routes->post('saveFeedback', 'Tickets::saveFeedback');
+    $routes->post('saveComment', 'Tickets::saveComment');
 
 
     //Khusus Kepala unit

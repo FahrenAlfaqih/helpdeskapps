@@ -59,7 +59,7 @@ class Users extends Controller
 
         if ($roleId == 1) { // Admin
             $users = $this->userModel
-                ->select('users.id, users.username, users.full_name, roles.name as role_name')
+                ->select('users.id, users.username, users.full_name, users.email, roles.name as role_name')
                 ->join('roles', 'roles.id = users.role_id')
                 ->where('users.role_id !=', 1)
                 ->findAll();
@@ -82,6 +82,15 @@ class Users extends Controller
         return $this->response->setJSON($users);
     }
 
+    public function create()
+    {
+        $session = session();
+        $roleId = $session->get('role_id');
+
+        $roles = $this->getAllowedRoles($roleId);
+        return view('users/create', ['roles' => $roles]);
+    }
+
 
     public function createUser()
     {
@@ -91,7 +100,7 @@ class Users extends Controller
         $data = $this->request->getJSON();
 
         // Validasi sederhana
-        if (!$data->username || !$data->password || !$data->full_name || !$data->role_id) {
+        if (!$data->username || !$data->password || !$data->full_name || !$data->email  || !$data->role_id) {
             return $this->response->setJSON(['status' => 'error', 'message' => 'Data tidak lengkap']);
         }
 
@@ -111,6 +120,7 @@ class Users extends Controller
             'username'  => $data->username,
             'password'  => password_hash($data->password, PASSWORD_DEFAULT),
             'full_name' => $data->full_name,
+            'email' => $data->email,
             'role_id'   => $data->role_id,
         ];
 
@@ -139,4 +149,29 @@ class Users extends Controller
 
         return $this->response->setJSON(['status' => 'success', 'message' => 'User berhasil dihapus']);
     }
+
+    public function updateUser()
+{
+    $data = $this->request->getJSON();
+
+    if (!$data->id || !$data->full_name || !$data->role_id || !$data->email) {
+        return $this->response->setJSON(['status' => 'error', 'message' => 'Data tidak lengkap']);
+    }
+
+    $user = $this->userModel->find($data->id);
+    if (!$user) {
+        return $this->response->setJSON(['status' => 'error', 'message' => 'User tidak ditemukan']);
+    }
+
+    $updateData = [
+        'full_name' => $data->full_name,
+        'role_id' => $data->role_id,
+        'email' => $data->email,
+    ];
+
+    $this->userModel->update($data->id, $updateData);
+
+    return $this->response->setJSON(['status' => 'success', 'message' => 'User berhasil diperbarui']);
+}
+
 }

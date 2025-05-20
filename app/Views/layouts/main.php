@@ -21,47 +21,84 @@
 
     <!-- Sidebar -->
     <?php $roleId = session()->get('role_id'); ?>
+    <?php $uri = service('uri'); ?>
 
     <aside
-        class="w-64 bg-blue-50 shadow-md sticky top-4 left-4 h-[calc(100vh-2rem)] flex flex-col rounded-lg p-5 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-400 scrollbar-track-blue-100">
+        class="w-64 bg-white shadow-md sticky top-4 left-4 h-[calc(100vh-2rem)] flex flex-col rounded-lg p-5 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-400 scrollbar-track-blue-100">
         <div class="mb-8 text-2xl font-semibold text-blue-800 select-none cursor-default tracking-wide">
             Help Desk
         </div>
 
-        <nav class="flex-1 flex flex-col space-y-3 text-sm font-medium text-blue-700">
+        <nav class="flex-1 flex flex-col text-sm font-medium text-gray-500 bg-white">
+            <!-- Dashboard -->
             <a href="/dashboard"
-                class="block py-2 px-4 rounded-lg hover:bg-blue-300 hover:text-blue-900 transition duration-200 ease-in-out">Dashboard</a>
+                class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
+           <?= $uri->getSegment(1) == 'dashboard' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
+                Dashboard
+            </a>
 
-            <?php if ($roleId != 1): ?>
+            <!-- Tickets: visible for all except role 1 (admin) -->
+            <?php if ($roleId == 6): ?>
                 <a href="/tickets"
-                    class="block py-2 px-4 rounded-lg hover:bg-blue-300 hover:text-blue-900 transition duration-200 ease-in-out">Tickets</a>
+                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
+               <?= $uri->getSegment(1) == 'tickets' && $uri->getSegment(2) == '' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
+                    Tickets
+                </a>
             <?php endif; ?>
 
+            <!-- Admin Only -->
             <?php if ($roleId == 1): ?>
                 <a href="/users"
-                    class="block py-2 px-4 rounded-lg hover:bg-blue-300 hover:text-blue-900 transition duration-200 ease-in-out">Users</a>
+                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
+               <?= $uri->getSegment(1) == 'users' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
+                    Users
+                </a>
                 <a href="/master/ruangan"
-                    class="block py-2 px-4 rounded-lg hover:bg-blue-300 hover:text-blue-900 transition duration-200 ease-in-out">Ruangan</a>
+                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
+               <?= $uri->getSegment(1) == 'master' && $uri->getSegment(2) == 'ruangan' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
+                    Ruangan
+                </a>
                 <a href="/master/jenis-perangkat"
-                    class="block py-2 px-4 rounded-lg hover:bg-blue-300 hover:text-blue-900 transition duration-200 ease-in-out">Jenis Perangkat</a>
+                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
+               <?= $uri->getSegment(1) == 'master' && $uri->getSegment(2) == 'jenis-perangkat' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
+                    Jenis Perangkat
+                </a>
             <?php endif; ?>
 
+            <!-- Role 2 & 3 -->
             <?php if ($roleId == 2 || $roleId == 3): ?>
                 <a href="/tickets/board"
-                    class="block py-2 px-4 rounded-lg hover:bg-blue-300 hover:text-blue-900 transition duration-200 ease-in-out">Tiket Board</a>
+                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
+               <?= $uri->getSegment(1) == 'tickets' && $uri->getSegment(2) == 'board' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
+                    Tiket Board
+                </a>
                 <a href="/tickets/board"
-                    class="block py-2 px-4 rounded-lg hover:bg-blue-300 hover:text-blue-900 transition duration-200 ease-in-out">Kelola Team</a>
+                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
+               <?= $uri->getSegment(1) == 'tickets' && $uri->getSegment(2) == 'board' && $uri->getSegment(3) == '' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
+                    Kelola Team
+                </a>
             <?php endif; ?>
 
+            <!-- Role 4 & 5 -->
             <?php if (in_array($roleId, [4, 5])): ?>
                 <a href="/tickets/board-staff"
-                    class="block py-2 px-4 rounded-lg hover:bg-blue-300 hover:text-blue-900 transition duration-200 ease-in-out">Tiket Board Staff</a>
+                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
+               <?= $uri->getSegment(1) == 'tickets' && $uri->getSegment(2) == 'board-staff' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
+                    Tiket Board Staff
+                </a>
             <?php endif; ?>
 
+            <!-- Spacer agar Logout selalu di bawah -->
+            <div class="flex-1"></div>
+
+            <!-- Logout Button -->
             <a href="/auth/logout"
-                class="mt-auto block py-3 px-4 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-center font-semibold transition duration-200 ease-in-out">Logout</a>
+                class="block py-3 px-4 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-center font-semibold transition duration-200 ease-in-out mt-4">
+                Logout
+            </a>
         </nav>
     </aside>
+
 
     <!-- Main content -->
     <div class="flex-1 flex flex-col overflow-auto">
@@ -74,7 +111,7 @@
             <!-- Container kanan untuk nama user + role + avatar -->
             <div class="flex items-center space-x-4">
                 <div class="text-blue-800 select-none cursor-default text-right">
-                    <div class="font-medium px-5 py-1 shadow-sm">
+                    <div class="font-medium px-5 py-1 ">
                         <?= session()->get('full_name') ?? 'User' ?>
                     </div>
                     <div class="text-sm text-blue-600 px-5">

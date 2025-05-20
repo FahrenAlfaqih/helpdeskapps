@@ -6,7 +6,7 @@ use CodeIgniter\Model;
 
 class TicketCommentModel extends Model
 {
-    protected $table = 'comment';  // nama tabel
+    protected $table = 'ticket_comments';  
     protected $primaryKey = 'id';
     protected $allowedFields = ['ticket_id', 'user_id', 'comment', 'created_at'];
     public $timestamps = false;

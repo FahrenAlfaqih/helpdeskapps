@@ -8,7 +8,7 @@
     <div id="statusButtons" class="flex space-x-3 mb-6">
         <?php
         $statuses = [
-            'menunggu' => 'Menunggu',
+            // 'menunggu' => 'Menunggu',
             'open' => 'Open',
             'inprogress' => 'In Progress',
             'done' => 'Done',

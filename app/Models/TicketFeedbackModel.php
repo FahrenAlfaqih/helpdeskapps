@@ -6,7 +6,7 @@ use CodeIgniter\Model;
 
 class TicketFeedbackModel extends Model
 {
-    protected $table = 'feedback';  // nama tabel
+    protected $table = 'ticket_feedback';  
     protected $primaryKey = 'id';
     protected $allowedFields = ['ticket_id', 'requestor_id', 'rating', 'suggestion', 'created_at'];
     public $timestamps = false; // kamu simpan manual created_at

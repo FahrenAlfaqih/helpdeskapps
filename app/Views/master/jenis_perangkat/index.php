@@ -2,7 +2,7 @@
 
 <?= $this->section('content') ?>
 
-<div class="max-w-3xl mx-auto bg-white p-6 rounded shadow">
+<div class="max-w-7xl mx-auto bg-white p-6 rounded shadow">
   <h1 class="text-2xl font-bold mb-4 text-blue-900">Manajemen Jenis Perangkat</h1>
 
   <form id="addJenisForm" class="flex space-x-2 mb-4 items-center">
