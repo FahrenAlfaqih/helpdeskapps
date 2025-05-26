@@ -37,56 +37,17 @@
                 Dashboard
             </a>
 
-            <!-- Tickets: visible for all except role 1 (admin) -->
-            <?php if ($roleId == 6): ?>
-                <a href="/tickets"
-                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
+
+            <a href="/tickets"
+                class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
                <?= $uri->getSegment(1) == 'tickets' && $uri->getSegment(2) == '' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
-                    Tickets
-                </a>
-            <?php endif; ?>
-
-            <!-- Admin Only -->
-            <?php if ($roleId == 1): ?>
-                <a href="/users"
-                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
-               <?= $uri->getSegment(1) == 'users' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
-                    Users
-                </a>
-                <a href="/master/ruangan"
-                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
-               <?= $uri->getSegment(1) == 'master' && $uri->getSegment(2) == 'ruangan' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
-                    Ruangan
-                </a>
-                <a href="/master/jenis-perangkat"
-                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
-               <?= $uri->getSegment(1) == 'master' && $uri->getSegment(2) == 'jenis-perangkat' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
-                    Jenis Perangkat
-                </a>
-            <?php endif; ?>
-
-            <!-- Role 2 & 3 -->
-            <?php if ($roleId == 2 || $roleId == 3): ?>
-                <a href="/tickets/board"
-                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
-               <?= $uri->getSegment(1) == 'tickets' && $uri->getSegment(2) == 'board' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
-                    Tiket Board
-                </a>
-                <a href="/tickets/board"
-                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
-               <?= $uri->getSegment(1) == 'tickets' && $uri->getSegment(2) == 'board' && $uri->getSegment(3) == '' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
-                    Kelola Team
-                </a>
-            <?php endif; ?>
-
-            <!-- Role 4 & 5 -->
-            <?php if (in_array($roleId, [4, 5])): ?>
-                <a href="/tickets/board-staff"
-                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
-               <?= $uri->getSegment(1) == 'tickets' && $uri->getSegment(2) == 'board-staff' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
-                    Tiket Board Staff
-                </a>
-            <?php endif; ?>
+                Tickets
+            </a>
+            <a href="/tickets/board-staff"
+                class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
+               <?= $uri->getSegment(1) == 'tickets/board-staff' && $uri->getSegment(2) == '' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
+                Tickets Board
+            </a>
 
             <!-- Spacer agar Logout selalu di bawah -->
             <div class="flex-1"></div>
@@ -111,13 +72,14 @@
             <!-- Container kanan untuk nama user + role + avatar -->
             <div class="flex items-center space-x-4">
                 <div class="text-blue-800 select-none cursor-default text-right">
-                    <div class="font-medium px-5 py-1 ">
-                        <?= session()->get('full_name') ?? 'User' ?>
+                    <div class="font-medium px-5 py-1">
+                        <?= esc(session()->get('nama') ?? 'User') ?>
                     </div>
                     <div class="text-sm text-blue-600 px-5">
-                        <?= session()->get('role_name') ?? 'Role tidak diketahui' ?>
+                        <?= esc(session()->get('unit_usaha') ?? '-') ?> - <?= esc(session()->get('unit_kerja') ?? '-') ?>
                     </div>
                 </div>
+
                 <button
                     class="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold uppercase select-none cursor-pointer">
                     <?= strtoupper(substr(session()->get('full_name') ?? 'U', 0, 1)) ?>
@@ -134,5 +96,8 @@
     </div>
 
 </body>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css" rel="stylesheet">
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
 
 </html>

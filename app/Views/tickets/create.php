@@ -1,235 +1,112 @@
 <?= $this->extend('layouts/main') ?>
-
 <?= $this->section('content') ?>
 
-<div class="max-w-7xl mx-auto bg-white p-6 rounded shadow">
-    <h2 class="text-2xl font-semibold mb-6 text-blue-900">Tambah Tiket Baru</h2>
-    <form id="addTicketForm" class="space-y-6">
+<div class="max-w-7xl mx-auto px-6 py-8 bg-white p-6 rounded-lg shadow-md">
+    <h2 class="text-3xl font-bold mb-8 text-blue-900 select-none border-b border-blue-300 pb-2">Buat Tiket Baru</h2>
 
-        <div class="flex flex-col md:flex-row md:space-x-8">
-            <!-- Kiri -->
-            <div class="flex-1 space-y-4">
-                <?= view('components/input', [
-                    'label' => 'Nama',
-                    'type' => 'text',
-                    'id' => 'nama',
-                    'name' => 'nama',
-                    'placeholder' => 'Nama lengkap',
-                    'value' => session()->get('full_name'),
-                    'required' => true,
-                    'readonly' => true
-                ]) ?>
+    <?php if(session()->getFlashdata('errors')): ?>
+        <div class="mb-6 p-4 bg-red-100 border border-red-300 text-red-700 rounded shadow-sm">
+            <ul class="list-disc list-inside">
+                <?php foreach(session()->getFlashdata('errors') as $error): ?>
+                    <li><?= esc($error) ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
 
-                <?= view('components/input', [
-                    'label' => 'Tujuan',
-                    'type' => 'select',
-                    'id' => 'tujuan',
-                    'name' => 'tujuan',
-                    'options' => ['IT' => 'Team IT', 'GA' => 'General Affair'],
-                    'required' => true
-                ]) ?>
+    <form id="createTicketForm" enctype="multipart/form-data" class="space-y-8">
+        <?= csrf_field() ?>
 
-                <?= view('components/input', [
-                    'label' => 'Kategori',
-                    'type' => 'select',
-                    'id' => 'kategori',
-                    'name' => 'kategori',
-                    'options' => $kategori_list,
-                    'required' => true
-                ]) ?>
-
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Nama Requestor (readonly) -->
+            <div>
+                <label for="nama_requestor" class="block font-semibold mb-1">Nama Requestor</label>
+                <input type="text" id="nama_requestor" name="nama_requestor" 
+                       value="<?= esc(session()->get('nama')) ?>" readonly
+                       class="w-full border rounded px-3 py-2 bg-gray-100 cursor-not-allowed" />
             </div>
 
-            <!-- Kanan -->
-            <div class="flex-1 space-y-4 mt-6 md:mt-0">
-                <?= view('components/input', [
-                    'label' => 'Tanggal',
-                    'type' => 'text',
-                    'id' => 'tanggal',
-                    'name' => 'tanggal',
-                    'placeholder' => 'Pilih tanggal',
-                    'required' => true,
-                    'value' => ''
-                ]) ?>
+            <!-- Prioritas -->
+            <div>
+                <label for="prioritas" class="block font-semibold mb-1">Prioritas</label>
+                <select id="prioritas" name="prioritas" required
+                        class="w-full border rounded px-3 py-2">
+                    <option value="">-- Pilih Prioritas --</option>
+                    <option value="High">High</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+            </div>
 
+            <!-- Tujuan Tiket -->
+            <div>
+                <label for="id_unit_tujuan" class="block font-semibold mb-1">Tujuan Tiket (Unit Kerja)</label>
+                <select id="id_unit_tujuan" name="id_unit_tujuan" required
+                        class="w-full border rounded px-3 py-2">
+                    <option value="">-- Pilih Unit Kerja Tujuan --</option>
+                    <?php foreach($units as $unit): ?>
+                        <option value="<?= esc($unit['id_unit_kerja']) ?>"><?= esc($unit['nm_unit_kerja']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
 
-                <?= view('components/input', [
-                    'label' => 'Ruangan',
-                    'type' => 'select',
-                    'id' => 'ruangan_id',
-                    'name' => 'ruangan_id',
-                    'options' => array_column($ruangan_list, 'nama', 'id'),
-                    'required' => true
-                ]) ?>
-
-                <?= view('components/input', [
-                    'label' => 'Jenis Perangkat',
-                    'type' => 'select',
-                    'id' => 'jenis_perangkat_id',
-                    'name' => 'jenis_perangkat_id',
-                    'options' => [],
-                    'required' => true
-                ]) ?>
+            <!-- Upload Gambar -->
+            <div>
+                <label for="gambar" class="block font-semibold mb-1">Upload Gambar </label>
+                <input type="file" id="gambar" name="gambar" accept="image/*" class="w-full" />
             </div>
         </div>
-        <?= view('components/input', [
-            'label' => 'Permasalahan',
-            'type' => 'textarea',
-            'id' => 'title',
-            'name' => 'title',
-            'placeholder' => 'Permasalahan',
-            'required' => true,
-        ]) ?>
 
-        <!-- Deskripsi dengan toolbar -->
+        <!-- Judul -->
         <div>
-            <label for="deskripsi" class="block text-sm font-medium text-blue-700 mb-2">Deskripsi Permasalahan</label>
-
-            <div class="mb-2 space-x-2">
-                <button type="button" onclick="formatText('bold')" class="px-2 py-1 border rounded hover:bg-blue-100" title="Bold"><strong>B</strong></button>
-                <button type="button" onclick="formatText('italic')" class="px-2 py-1 border rounded hover:bg-blue-100" title="Italic"><em>I</em></button>
-                <button type="button" onclick="formatText('underline')" class="px-2 py-1 border rounded hover:bg-blue-100" title="Underline"><u>U</u></button>
-                <button type="button" onclick="formatText('insertUnorderedList')" class="px-2 py-1 border rounded hover:bg-blue-100" title="List">&bull; List</button>
-                <button type="button" onclick="formatText('insertOrderedList')" class="px-2 py-1 border rounded hover:bg-blue-100" title="Numbered List">1. List</button>
-            </div>
-
-            <div
-                id="deskripsi"
-                contenteditable="true"
-                class="border border-blue-300 rounded p-3 min-h-[120px] focus:outline-none focus:ring-2 focus:ring-blue-400 overflow-y-auto"></div>
-
-            <textarea name="deskripsi" id="deskripsi_input" class="hidden"></textarea>
+            <label for="judul" class="block font-semibold mb-1">Judul</label>
+            <input type="text" id="judul" name="judul" required
+                   class="w-full border rounded px-3 py-2" />
         </div>
 
-        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition font-semibold mt-4">Kirim Tiket</button>
+        <!-- Deskripsi -->
+        <div>
+            <label for="deskripsi" class="block font-semibold mb-1">Deskripsi</label>
+            <textarea id="deskripsi" name="deskripsi" rows="5" required
+                      class="w-full border rounded px-3 py-2"></textarea>
+        </div>
+
+        <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-200">
+            Kirim Tiket
+        </button>
     </form>
+    
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
 <script>
-    flatpickr("#tanggal", {
-        dateFormat: "Y-m-d",
-        allowInput: true,
+$('#createTicketForm').on('submit', function(e) {
+    e.preventDefault();
 
-    });
+    var formData = new FormData(this);
 
-    function formatText(command) {
-        const deskripsi = document.getElementById('deskripsi');
-        deskripsi.focus();
-        document.execCommand(command, false, null);
-    }
-
-
-
-    // Supaya textarea yang hidden sinkron dengan konten editable saat submit form
-    const form = document.getElementById('addTicketForm') || document.getElementById('createTicketForm') || document.getElementById('updateTicketForm');
-
-    if (form) {
-        form.addEventListener('submit', e => {
-            const deskripsiDiv = document.getElementById('deskripsi');
-            const deskripsiInput = document.getElementById('deskripsi_input');
-            if (deskripsiDiv && deskripsiInput) {
-                deskripsiInput.value = deskripsiDiv.innerHTML.trim();
+    $.ajax({
+        url: "<?= base_url('tickets/create') ?>",
+        method: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(res) {
+            if(res.status === 'success' || !res.status) {
+                alert('Tiket berhasil dibuat');
+                window.location.href = "<?= base_url('tickets') ?>";
+            } else {
+                alert(res.message || 'Terjadi kesalahan');
             }
-        });
-    }
-
-    document.getElementById('kategori').addEventListener('change', async function() {
-        const kategori = this.value;
-        const jenisSelect = document.getElementById('jenis_perangkat_id');
-
-        // Reset dulu dropdown jenis perangkat
-        jenisSelect.innerHTML = '<option value="">Loading...</option>';
-        jenisSelect.disabled = true;
-
-        if (!kategori) {
-            jenisSelect.innerHTML = '<option value="">-- Pilih Kategori dulu --</option>';
-            jenisSelect.disabled = true;
-            return;
-        }
-
-        try {
-            const res = await fetch(`/master/jenis-perangkat/by-kategori/${encodeURIComponent(kategori)}`);
-            if (!res.ok) throw new Error('Gagal load data jenis perangkat');
-            const data = await res.json();
-
-            if (data.length === 0) {
-                jenisSelect.innerHTML = '<option value="">Tidak ada jenis perangkat untuk kategori ini</option>';
-                jenisSelect.disabled = true;
-                return;
-            }
-
-            // Isi dropdown dengan data yang diterima
-            jenisSelect.innerHTML = '<option value="">-- Pilih Jenis Perangkat --</option>';
-            data.forEach(item => {
-                const option = document.createElement('option');
-                option.value = item.id;
-                option.textContent = item.nama;
-                jenisSelect.appendChild(option);
-            });
-
-            jenisSelect.disabled = false;
-        } catch (error) {
-            jenisSelect.innerHTML = '<option value="">Gagal memuat data</option>';
-            jenisSelect.disabled = true;
-            console.error(error);
+        },
+        error: function(xhr) {
+            let errors = xhr.responseJSON?.errors || {};
+            let message = Object.values(errors).flat().join('\n');
+            alert('Error:\n' + message);
         }
     });
-
-    document.getElementById('addTicketForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-
-        // Ambil nilai input
-        const title = this.title.value.trim();
-        const assigned_unit = this.tujuan.value;
-        const kategori = this.kategori.value;
-        const tanggal = this.tanggal.value;
-        const ruangan_id = this.ruangan_id.value;
-        const jenis_perangkat_id = this.jenis_perangkat_id.value;
-
-        // Ambil konten dari contenteditable deskripsi
-        const descriptionEditor = document.getElementById('deskripsi');
-        const description = descriptionEditor.innerHTML.trim();
-
-        // Validasi wajib
-        if (!title || !assigned_unit || !kategori || !tanggal || !ruangan_id || !jenis_perangkat_id) {
-            alert('Semua field wajib diisi kecuali deskripsi.');
-            return;
-        }
-
-        // Validasi deskripsi sederhana (boleh kosong sesuai kebutuhan)
-        if (!description || description === '<br>') {
-            alert('Deskripsi wajib diisi');
-            return;
-        }
-
-        // Prepare data JSON
-        const payload = {
-            title,
-            assigned_unit,
-            kategori,
-            tanggal,
-            ruangan_id,
-            jenis_perangkat_id,
-            description
-        };
-
-        // Kirim ke server
-        const res = await fetch('/tickets/create', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
-
-        const data = await res.json();
-        alert(data.message);
-        if (data.status === 'success') {
-            this.reset();
-            descriptionEditor.innerHTML = ''; // reset editor
-            window.location.href = '/tickets';
-        }
-    });
+});
 </script>
 
 <?= $this->endSection() ?>

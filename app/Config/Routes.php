@@ -21,49 +21,25 @@ $routes->get('auth/logout', 'Auth::logout');
 // }, ['filter' => 'auth']);
 // Jadi ini
 $routes->get('dashboard', 'Dashboard::index', ['filter' => 'auth']);
+$routes->get('uploads/(:any)', 'FileServe::image/$1');
 
-
-// Users management group (Admin & Kepala Unit)
-$routes->group('users', ['filter' => 'auth'], function ($routes) {
-    $routes->get('', 'Users::index');             // daftar user
-    $routes->get('create', 'Users::create');      // form buat user
-    $routes->get('list', 'Users::listUsers');
-    $routes->post('create', 'Users::createUser');
-    $routes->post('update', 'Users::updateUser');
-    $routes->post('delete', 'Users::deleteUser');
-});
 
 
 $routes->group('tickets', ['filter' => 'auth'], function ($routes) {
-    $routes->get('', 'Tickets::index');              // /tickets
-    $routes->get('list', 'Tickets::list');           // API list tiket
-    $routes->get('create', 'Tickets::createView');   // halaman buat tiket baru
-    $routes->post('create', 'Tickets::create');      // API create tiket
-    $routes->get('update/(:num)', 'Tickets::updateView/$1');   // halaman update tiket
-    $routes->get('detail/(:num)', 'Tickets::detailView/$1');   // halaman detail tiket
-    $routes->get('api-detail/(:num)', 'Tickets::apiDetail/$1'); // API detail tiket
-    $routes->post('update-status', 'Tickets::updateStatus');
+    $routes->get('', 'Tickets::index');               // halaman list tiket
+    $routes->get('list', 'Tickets::list');            // API list tiket (bisa untuk DataTables)
 
-    $routes->get('staff/unit/(:segment)', 'Tickets::getStaffByUnit/$1');
-    $routes->post('assign', 'Tickets::assign');
+    $routes->get('create', 'Tickets::createView');    // form buat tiket baru
+    $routes->post('create', 'Tickets::create');       // simpan tiket baru
+
+    $routes->get('list-for-unit', 'Tickets::listForUnit');  // API list tiket utk staf/kepala unit
+    $routes->post('take', 'Tickets::takeTicket');
+    $routes->post('finish', 'Tickets::finish');
+    $routes->post('confirm', 'Tickets::confirmCompletion');
+
 
     $routes->get('board-staff', 'Tickets::boardStaffView');
-    $routes->get('staff/count/(:segment)', 'Tickets::countByStatus/$1');
-
-
-    $routes->get('staff/list/(:segment)', 'Tickets::staffList/$1');
-    $routes->post('take', 'Tickets::takeTicket');
-    $routes->post('transfer', 'Tickets::transferTicket');
-    $routes->post('transfer/respond', 'Tickets::respondTransfer');
-    $routes->get('transfer/list', 'Tickets::listTransfers');
-
-    $routes->post('saveFeedback', 'Tickets::saveFeedback');
-    $routes->post('saveComment', 'Tickets::saveComment');
-
-
-    //Khusus Kepala unit
-    $routes->get('board', 'Tickets::boardView');
-    $routes->get('board/list/(:segment)', 'Tickets::boardList/$1');
+    $routes->get('detail/(:num)', 'Tickets::detail/$1');
 });
 
 $routes->group('master', ['filter' => 'auth'], function ($routes) {

@@ -2,612 +2,411 @@
 
 namespace App\Controllers;
 
-use App\Models\JenisPerangkatModel;
-use App\Models\RoleModel;
-use App\Models\RuanganModel;
-use App\Models\TicketCommentModel;
-use App\Models\TicketFeedbackModel;
 use CodeIgniter\Controller;
 use App\Models\TicketModel;
-use App\Models\UserModel;
-use App\Models\TicketTransferModel;
-use Config\Services;
+use Config\Database;
+use Carbon\Carbon;
 
 class Tickets extends Controller
 {
     protected $ticketModel;
-    protected $ticketTransferModel;
-    protected $commentModel;
-    protected $feedbackModel;
-
+    protected $db;
 
     public function __construct()
     {
+        helper(['form', 'url', 'session']);
         $this->ticketModel = new TicketModel();
-        $this->ticketTransferModel = new TicketTransferModel();
-        $this->feedbackModel = new TicketFeedbackModel();
-        $this->commentModel = new TicketCommentModel();
-        helper(['url', 'form', 'session']);
+        $this->db = Database::connect();
     }
 
-    // Halaman daftar tiket (index view)
     public function index()
     {
-        $roleId = session()->get('role_id');
-        if (!$roleId) return redirect('/');
-
-        return view('tickets/index', ['roleId' => $roleId]);
+        return view('tickets/index');
     }
 
-    // API: ambil daftar tiket sesuai role
-    public function list()
-    {
-        $session = session();
-        $roleId = $session->get('role_id');
-        $userId = $session->get('user_id');
-
-        if ($roleId == 2) {
-            $tickets = $this->ticketModel->getTicketsByUnit('IT');
-        } elseif ($roleId == 3) {
-            $tickets = $this->ticketModel->getTicketsByUnit('GA');
-        } elseif ($roleId == 4) {
-            $tickets = $this->ticketModel->getTicketsByStaff($userId);
-        } elseif ($roleId == 5) {
-            $tickets = $this->ticketModel->getTicketsByStaff($userId);
-        } elseif ($roleId == 6) {
-            $tickets = $this->ticketModel->getTicketsByRequestor($userId);
-        } else {
-            $tickets = [];
-        }
-
-        return $this->response->setJSON($tickets);
-    }
-
-    public function detailView($ticketId)
-    {
-        helper('session');
-        $roleId = session()->get('role_id');
-        if (!$roleId) {
-            return redirect('/');
-        }
-        // Kirim ticketId ke view supaya bisa fetch API detail
-        return view('tickets/detail', ['ticketId' => $ticketId]);
-    }
-
-
-    public function apiDetail($ticketId)
-    {
-        $ticket = $this->ticketModel->getTicketDetailById($ticketId);
-
-        if (!$ticket) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket tidak ditemukan'])->setStatusCode(404);
-        }
-
-        return $this->response->setJSON($ticket);
-    }
-
-
-    // Halaman buat tiket baru, hanya role 6 (requestor)
     public function createView()
     {
-        helper('session');
-        $roleId = session()->get('role_id');
-        if ($roleId != 6) return redirect('/tickets');
+
+        $allowedUnitIds = ['E13', 'E21'];
+
+        $units = $this->db->table('unit_kerja')
+            ->whereIn('id_unit_kerja', $allowedUnitIds)
+            ->get()
+            ->getResultArray();
 
 
-        $ruanganModel = new RuanganModel();
-        $jenisPerangkatModel = new JenisPerangkatModel();
 
-        $kategori_list = $jenisPerangkatModel->distinct()->select('kategori')->orderBy('kategori')->findAll();
-        $data = [
-            'ruangan_list' => $ruanganModel->getAll(),
-            'kategori_list' => array_column($kategori_list, 'kategori', 'kategori'),
-        ];
-        return view('tickets/create', $data);
+        return view('tickets/create', ['units' => $units]);
     }
 
 
 
-
-
-    // API create tiket baru
-    // API create tiket baru
+    // Simpan tiket baru, simpan juga data penempatan requestor dan unit tujuan tiket
     public function create()
     {
         $session = session();
-        $data = $this->request->getJSON();
+        $idPegawaiRequestor = $session->get('id_pegawai');
 
-        // Validasi sederhana
-        if (!$data->title || !$data->assigned_unit || !$data->kategori || !$data->ruangan_id || !$data->jenis_perangkat_id) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Judul, Unit, Kategori, Ruangan, dan Jenis Perangkat wajib diisi']);
+        // Ambil penempatan lengkap requestor
+        $penempatan = $this->db->table('pegawai_penempatan as pp')
+            ->select('pp.id_unit_level, pp.id_unit_bisnis, pp.id_unit_usaha, pp.id_unit_organisasi, pp.id_unit_kerja, pp.id_unit_kerja_sub, pp.id_unit_lokasi')
+            ->where('pp.id_pegawai', $idPegawaiRequestor)
+            ->get()->getRow();
+
+        if (!$penempatan) {
+            return redirect()->back()->with('error', 'Data penempatan requestor tidak ditemukan.');
         }
 
-        $newTicket = [
-            'title'              => $data->title,
-            'description'        => $data->description ?? '',
-            'requestor_id'       => $session->get('user_id'),
-            'assigned_unit'      => $data->assigned_unit,
-            'kategori'           => $data->kategori,
-            'ruangan_id'         => $data->ruangan_id,
-            'jenis_perangkat_id' => $data->jenis_perangkat_id,
-            'status'             => 'Menunggu',
+        // Validasi
+        $validation = \Config\Services::validation();
+        $rules = [
+            'judul' => 'required|max_length[255]',
+            'deskripsi' => 'required',
+            'prioritas' => 'required|in_list[High,Medium,Low]',
+            'id_unit_tujuan' => 'required',
+            'gambar' => 'permit_empty|is_image[gambar]|max_size[gambar,2048]',
         ];
 
-        $this->ticketModel->insert($newTicket);
-
-        return $this->response->setJSON(['status' => 'success', 'message' => 'Tiket berhasil dibuat']);
-    }
-
-
-    // Halaman update tiket
-    public function updateView($ticketId)
-    {
-        $ticket = $this->ticketModel->find($ticketId);
-        if (!$ticket) return redirect('/tickets');
-
-        return view('tickets/edit', ['ticket' => $ticket]);
-    }
-
-    // API update status tiket
-    public function updateStatus()
-    {
-        $session = session();
-        $data = $this->request->getJSON();
-
-        if (!$data->ticket_id || !$data->status) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Data tidak lengkap']);
+        if (!$this->validate($rules)) {
+            return redirect()->back()->withInput()->with('errors', $validation->getErrors());
         }
 
-        $ticket = $this->ticketModel->find($data->ticket_id);
-        $userId = $session->get('user_id');
-        $roleId = $session->get('role_id');
-
-        if (!$ticket) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket tidak ditemukan']);
-        }
-
-        // Requestor cuma bisa update tiket miliknya
-        if ($roleId == 6 && $ticket['requestor_id'] != $userId) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Bukan tiket milik Anda']);
-        }
-
-        // Kepala unit (role 2 = IT, role 3 = GA) boleh update jika tiket assigned_unit sesuai
-        if (in_array($roleId, [2, 3])) {
-            $unitMap = [
-                2 => 'IT',
-                3 => 'GA'
-            ];
-            if ($ticket['assigned_unit'] !== $unitMap[$roleId]) {
-                return $this->response->setJSON(['status' => 'error', 'message' => 'Tidak punya hak update tiket ini']);
-            }
-        }
-        // Pegawai (role 4,5) hanya boleh update tiket yg assigned ke mereka
-        elseif (in_array($roleId, [4, 5])) {
-            if ($ticket['assigned_staff_id'] != $userId) {
-                return $this->response->setJSON(['status' => 'error', 'message' => 'Tidak punya hak update tiket ini']);
+        // Upload gambar jika ada
+        $fileName = null;
+        if ($file = $this->request->getFile('gambar')) {
+            if ($file->isValid() && !$file->hasMoved()) {
+                $fileName = $file->getRandomName();
+                $file->move(WRITEPATH . 'uploads', $fileName);
             }
         }
 
-        // Kalau kepala unit, jangan lupa set assigned_head_id juga jika mau track siapa yg update
-        if (in_array($roleId, [2, 3])) {
-            $updateData = [
-                'status' => $data->status,
-                'assigned_head_id' => $userId
-            ];
-        } else {
-            $updateData = [
-                'status' => $data->status
-            ];
-        }
+        // Simpan tiket
+        $this->ticketModel->insert([
+            'id_pegawai_requestor' => $idPegawaiRequestor,
+            'unit_level_requestor' => $penempatan->id_unit_level ?? null,
+            'unit_bisnis_requestor' => $penempatan->id_unit_bisnis ?? null,
+            'unit_usaha_requestor' => $penempatan->id_unit_usaha ?? null,
+            'unit_organisasi_requestor' => $penempatan->id_unit_organisasi ?? null,
+            'unit_kerja_requestor' => $penempatan->id_unit_kerja ?? null,
+            'unit_kerja_sub_requestor' => $penempatan->id_unit_kerja_sub ?? null,
+            'unit_lokasi_requestor' => $penempatan->id_unit_lokasi ?? null,
+            'judul' => $this->request->getPost('judul'),
+            'deskripsi' => $this->request->getPost('deskripsi'),
+            'id_unit_tujuan' => $this->request->getPost('id_unit_tujuan'),
+            'prioritas' => $this->request->getPost('prioritas'),
+            'gambar' => $fileName,
+            'status' => 'Open',
+        ]);
 
-        $this->ticketModel->update($data->ticket_id, $updateData);
 
-        return $this->response->setJSON(['status' => 'success', 'message' => 'Status tiket diperbarui']);
+        return redirect()->to('/tickets')->with('success', 'Tiket berhasil dibuat dan dikirim ke unit terkait.');
     }
 
-    public function boardView()
+    // API list tiket requestor (pakai DataTables)
+    public function list()
     {
-        $roleId = session()->get('role_id');
-        if (!in_array($roleId, [2, 3])) {
-            // Bukan kepala IT atau GA, tolak akses
-            return redirect('/tickets');
-        }
-
-        return view('tickets/board', ['roleId' => $roleId]);
-    }
-
-    /**
-     * API ambil list tiket berdasarkan status dan tujuan sesuai role kepala
-     * @param string $status Status tiket: menunggu, open, inprogress, done, transfer
-     */
-    public function boardList($status)
-    {
+        $request = service('request');
         $session = session();
-        $roleId = $session->get('role_id');
 
-        if (!in_array($roleId, [2, 3])) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Unauthorized'])->setStatusCode(403);
+        $start = (int) $request->getGet('start') ?? 0;
+        $length = (int) $request->getGet('length') ?? 10;
+        $draw = (int) $request->getGet('draw') ?? 1;
+        $searchValue = $request->getGet('search')['value'] ?? '';
+
+        $idPegawai = $session->get('id_pegawai');
+
+        $builder = $this->ticketModel->where('id_pegawai_requestor', $idPegawai);
+
+        if (!empty($searchValue)) {
+            $builder->groupStart()
+                ->like('judul', $searchValue)
+                ->orLike('deskripsi', $searchValue)
+                ->groupEnd();
         }
 
-        // Tentukan tujuan berdasar role
-        $unit = $roleId == 2 ? 'IT' : 'GA';
+        $totalData = $builder->countAllResults(false);
 
-        // Map status friendly ke db
-        $statusMap = [
-            'menunggu' => 'Menunggu',
-            'open' => 'Open',
-            'inprogress' => 'In Progress',
-            'done' => 'Done',
-            'transfer' => 'Transfer',
-        ];
-
-        if (!array_key_exists($status, $statusMap)) {
-            return $this->response->setJSON([]);
-        }
-
-        $tickets = $this->ticketModel
-            ->select('tickets.*, ruangan.nama as ruangan_name')
-            ->join('ruangan', 'ruangan.id = tickets.ruangan_id', 'left')
-            ->where('assigned_unit', $unit)
-            ->where('status', $statusMap[$status])
-            ->orderBy('created_at', 'DESC')
+        $data = $builder->orderBy('created_at', 'DESC')
+            ->limit($length, $start)
             ->findAll();
 
-        return $this->response->setJSON($tickets);
+        return $this->response->setJSON([
+            "draw" => $draw,
+            "recordsTotal" => $totalData,
+            "recordsFiltered" => $totalData,
+            "data" => $data,
+        ]);
     }
 
-    public function getStaffByUnit($unit)
-    {
-        $userModel = new UserModel();
-        // Ambil user dengan role pegawai IT(4) atau GA(5) sesuai unit
-        if ($unit === 'IT') {
-            $staff = $userModel->where('role_id', 4)->findAll();
-        } elseif ($unit === 'GA') {
-            $staff = $userModel->where('role_id', 5)->findAll();
-        } else {
-            $staff = [];
-        }
-
-        return $this->response->setJSON($staff);
-    }
-    public function assign()
+    public function listForUnit()
     {
         $session = session();
-        $roleId = $session->get('role_id');
-        $data = $this->request->getJSON();
+        $idPegawai = $session->get('id_pegawai');
 
-        if (!in_array($roleId, [2, 3])) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Anda bukan kepala unit']);
+        // Ambil penempatan pegawai (unit usaha dan unit kerja)
+        $builder = $this->db->table('pegawai_penempatan as pp');
+        $builder->select('pp.id_unit_level, pp.id_unit_bisnis, pp.id_unit_usaha, pp.id_unit_organisasi, pp.id_unit_kerja, pp.id_unit_kerja_sub, pp.id_unit_lokasi');
+        $builder->where('pp.id_pegawai', $idPegawai);
+        $penempatan = $builder->get()->getRow();
+
+        if (!$penempatan) {
+            return $this->response->setJSON(['error' => 'Penempatan pegawai tidak ditemukan']);
         }
 
-        if (!$data->ticket_id || !$data->assigned_staff_id) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Data tidak lengkap']);
+        // Buat query tiket dengan join ke user untuk mendapatkan nama assigned pegawai dan requestor
+        $builder = $this->db->table('tiket t');
+        $builder->select('t.*, u.nama as assigned_nama, ur.nama as requestor_nama');
+        $builder->join('user u', 'u.id_pegawai = t.assigned_to', 'left');
+        $builder->join('user ur', 'ur.id_pegawai = t.id_pegawai_requestor', 'left'); // Join untuk requestor
+
+        $builder->groupStart();
+
+        // Cek jika user yang login adalah Korporat IT: unit_bisnis B1, unit_usaha C1, unit_kerja E13
+        if ($penempatan->id_unit_bisnis === 'B1' && $penempatan->id_unit_usaha === 'C1' && $penempatan->id_unit_kerja === 'E13') {
+
+            // Tiket open/in progress/done yang:
+            // - unit_bisnis_requestor = B1 dan unit_usaha_requestor = C1 (korporat) 
+            // OR
+            // - unit_bisnis_requestor = B3 dan unit_usaha_requestor NOT IN C1,C2,C3,C4,C5 (klinik)
+            $builder->groupStart();
+            $builder->whereIn('t.status', ['Open', 'In Progress', 'Done']);
+            $builder->groupStart();
+            // Korporat tiket
+            $builder->where('t.unit_bisnis_requestor', 'B1');
+            $builder->where('t.unit_usaha_requestor', 'C1');
+            $builder->groupEnd();
+            $builder->orGroupStart();
+            // Klinik tiket (unit_usaha NOT IN C1-C5)
+            $builder->where('t.unit_bisnis_requestor', 'B3');
+            $builder->whereNotIn('t.unit_usaha_requestor', ['C1', 'C2', 'C3', 'C4', 'C5']);
+            $builder->groupEnd();
+            $builder->groupEnd();
+
+            $builder->whereIn('t.id_unit_tujuan', ['E13', 'E21']); // tujuan bisa E13 atau E21 untuk korporat IT
+
+        } else {
+            // Untuk pegawai lain, tiket sesuai unit kerja dan unit usaha serta bisnis mereka
+            $builder->whereIn('t.status', ['Open', 'In Progress', 'Done']);
+            $builder->where('t.id_unit_tujuan', $penempatan->id_unit_kerja);
+            $builder->where('t.unit_bisnis_requestor', $penempatan->id_unit_bisnis);
+            $builder->where('t.unit_usaha_requestor', $penempatan->id_unit_usaha);
         }
 
-        $updateData = [
-            'assigned_staff_id' => $data->assigned_staff_id,
-            'assigned_head_id' => $session->get('user_id'),
-            'status' => 'Open',
-            'deadline' => $data->deadline,
+        $builder->groupEnd();
+
+        $builder->orGroupStart();
+        // Tiket yang sudah closed tapi assigned_to = pegawai ini (yang dikerjakan sendiri)
+        $builder->where('t.status', 'Closed');
+        $builder->where('t.assigned_to', $idPegawai);
+        $builder->groupEnd();
+
+        $totalData = $builder->countAllResults(false);
+
+        $data = $builder->orderBy('t.created_at', 'DESC')->get()->getResultArray();
+
+        // Format tanggal created_at pake Carbon
+        foreach ($data as &$ticket) {
+            $ticket['created_at'] = \Carbon\Carbon::parse($ticket['created_at'])
+                ->locale('id')
+                ->isoFormat('D MMMM YYYY HH:mm');
+        }
+
+        $response = [
+            "draw" => (int) $this->request->getGet('draw'),
+            "recordsTotal" => $totalData,
+            "recordsFiltered" => $totalData,
+            "data" => $data,
         ];
 
-        $this->ticketModel->update($data->ticket_id, $updateData);
-
-        return $this->response->setJSON(['status' => 'success', 'message' => 'Tiket berhasil ditugaskan']);
-    }
-
-    public function boardStaffView()
-    {
-        $session = session();
-        $roleId = $session->get('role_id');
-        $userId = $session->get('user_id');
-        return view('tickets/board_staff', ['roleId' => $roleId, 'userId' => $userId]);
+        return $this->response->setJSON($response);
     }
 
 
+    // public function listForUnit()
+    // {
+    //     $session = session();
+    //     $idPegawai = $session->get('id_pegawai');
 
+    //     // Ambil penempatan pegawai (unit usaha dan unit kerja)
+    //     $builder = $this->db->table('pegawai_penempatan as pp');
+    //     $builder->select('pp.id_unit_level, pp.id_unit_bisnis, pp.id_unit_usaha, pp.id_unit_organisasi, pp.id_unit_kerja, pp.id_unit_kerja_sub, pp.id_unit_lokasi');
+    //     $builder->where('pp.id_pegawai', $idPegawai);
+    //     $penempatan = $builder->get()->getRow();
+
+
+    //     if (!$penempatan) {
+    //         return $this->response->setJSON(['error' => 'Penempatan pegawai tidak ditemukan']);
+    //     }
+
+    //     // Buat query tiket dengan join ke user untuk mendapatkan nama assigned pegawai
+    //     $builder = $this->db->table('tiket t');
+    //     $builder->select('t.*, u.nama as assigned_nama, ur.nama as requestor_nama');
+    //     $builder->join('user u', 'u.id_pegawai = t.assigned_to', 'left');
+    //     $builder->join('user ur', 'ur.id_pegawai = t.id_pegawai_requestor', 'left'); // Join untuk requestor
+
+    //     $builder->groupStart();
+    //     // Tiket dengan status open dan in progress di unit kerja dan unit usaha yang sama
+    //     $builder->whereIn('t.status', ['Open', 'In Progress', 'Done']);
+    //     $builder->where('t.id_unit_tujuan', $penempatan->id_unit_kerja);
+    //     $builder->where('t.unit_bisnis_requestor', $penempatan->id_unit_bisnis);
+    //     $builder->where('t.unit_usaha_requestor', $penempatan->id_unit_usaha);
+    //     $builder->groupEnd();
+
+    //     $builder->orGroupStart();
+    //     // Tiket yang sudah closed tapi assigned_to = pegawai ini (yang dikerjakan sendiri)
+    //     $builder->where('t.status', 'Closed');
+    //     $builder->where('t.assigned_to', $idPegawai);
+    //     $builder->groupEnd();
+
+    //     $totalData = $builder->countAllResults(false);
+
+    //     $data = $builder->orderBy('t.created_at', 'DESC')->get()->getResultArray();
+
+    //     // Format tanggal created_at pake Carbon
+    //     foreach ($data as &$ticket) {
+    //         $ticket['created_at'] = Carbon::parse($ticket['created_at'])
+    //             ->locale('id')
+    //             ->isoFormat('D MMMM YYYY HH:mm');
+    //     }
+
+    //     $response = [
+    //         "draw" => (int) $this->request->getGet('draw'),
+    //         "recordsTotal" => $totalData,
+    //         "recordsFiltered" => $totalData,
+    //         "data" => $data,
+    //     ];
+
+    //     return $this->response->setJSON($response);
+    // }
+
+
+    // Staff/kepala unit ambil tiket dan update status serta komentar penyelesaian
     public function takeTicket()
     {
         $session = session();
-        $roleId = $session->get('role_id');
-        $userId = $session->get('user_id');
-        $data = $this->request->getJSON();
+        $idPegawai = $session->get('id_pegawai');
+        $idTiket = $this->request->getPost('id_tiket');
+        $status = $this->request->getPost('status') ?? 'In Progress';
+        $komentar = $this->request->getPost('komentar_penyelesaian') ?? null;
 
-        if (!$data->ticket_id) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Ticket ID diperlukan']);
-        }
-
-        $ticket = $this->ticketModel->find($data->ticket_id);
-
+        $ticket = $this->ticketModel->find($idTiket);
         if (!$ticket) {
             return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket tidak ditemukan']);
         }
 
-        // Pastikan pegawai yang ambil adalah assigned_staff_id dan status tiket open
-        if ($ticket['assigned_staff_id'] != $userId || $ticket['status'] != 'Open') {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Tidak punya hak untuk mengambil tiket ini']);
+        if ($ticket['assigned_to'] && $ticket['assigned_to'] != $idPegawai) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket sudah diambil oleh orang lain']);
         }
 
-        $this->ticketModel->update($data->ticket_id, ['status' => 'In Progress']);
-
-        // Jika ada transfer, set accepted
-        $this->ticketTransferModel->where('ticket_id', $data->ticket_id)
-            ->where('to_staff_id', $userId)
-            ->where('status', 'pending')
-            ->set(['status' => 'accepted', 'updated_at' => date('Y-m-d H:i:s')])
-            ->update();
-
-        return $this->response->setJSON(['status' => 'success', 'message' => 'Tiket berhasil diambil']);
-    }
-
-
-
-    public function transferTicket()
-    {
-        $session = session();
-        $userId = $session->get('user_id');
-        $data = $this->request->getJSON();
-
-        if (!$data->ticket_id || !$data->to_staff_id || !$data->reason) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Data tidak lengkap']);
-        }
-
-        $ticket = $this->ticketModel->find($data->ticket_id);
-        if (!$ticket) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket tidak ditemukan']);
-        }
-
-        if ($ticket['assigned_staff_id'] != $userId || strtolower($ticket['status']) != 'open') {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Tidak punya hak untuk mengalihkan tiket ini']);
-        }
-
-        // Insert record transfer
-        $this->ticketTransferModel->insert([
-            'ticket_id' => $data->ticket_id,
-            'from_staff_id' => $userId,
-            'to_staff_id' => $data->to_staff_id,
-            'reason' => $data->reason,
-            'status' => 'pending',
-            'created_at' => date('Y-m-d H:i:s')
+        $this->ticketModel->update($idTiket, [
+            'assigned_to' => $idPegawai,
+            'status' => $status,
+            'komentar_penyelesaian' => $komentar,
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        // Update ticket status jadi Transfer
-        $this->ticketModel->update($data->ticket_id, ['status' => 'Transfer']);
+        return $this->response->setJSON(['status' => 'success', 'message' => 'Tiket berhasil diambil dan diperbarui']);
+    }
 
-        // Load models
-        $email = \Config\Services::email();
-        $userModel = new UserModel();
+    public function finish()
+    {
+        $session = session();
+        $userId = $session->get('id_pegawai');
+        $idTiket = $this->request->getPost('id_tiket');
 
-        // Ambil email dan nama staff tujuan
-        $toStaff = $userModel->find($data->to_staff_id);
+        $ticket = $this->ticketModel->find($idTiket);
 
-        // Cari kepala unit berdasarkan assigned_unit tiket dan role_id kepala unit (misal 2 = Kepala IT, 3 = Kepala GA)
-        // Asumsikan unit dan role_id mapping seperti ini, sesuaikan dengan struktur DB-mu
-        $unitToRoleIdMap = [
-            'IT' => 2,
-            'GA' => 3,
-        ];
-        $unit = $ticket['assigned_unit'];
-        $kepalaUnitRoleId = $unitToRoleIdMap[$unit] ?? null;
-
-        $kepalaUnit = null;
-        if ($kepalaUnitRoleId !== null) {
-            // Cari kepala unit user berdasarkan role_id
-            $kepalaUnit = $userModel->where('role_id', $kepalaUnitRoleId)->first();
+        if (!$ticket) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket tidak ditemukan']);
         }
 
-        // Kirim email ke staff tujuan
-        if ($toStaff && !empty($toStaff['email'])) {
-            $email->clear();
-            $email->setFrom('fahren21ti@mahasiswa.pcr.ac.id', 'Help Desk Apps');
-            $email->setTo($toStaff['email']);
-            $email->setSubject('Notifikasi Pengalihan Tiket');
-            $messageStaff = "
-            Halo {$toStaff['full_name']},<br><br>
-            Anda mendapatkan pengalihan tiket baru dengan judul: <strong>{$ticket['title']}</strong>.<br>
-            Alasan pengalihan: {$data->reason}<br><br>
-            Silakan cek sistem Help Desk untuk detail lebih lanjut.<br><br>
-            Terima kasih.
-        ";
-            $email->setMessage($messageStaff);
-            $email->send();
+        if ($ticket['assigned_to'] !== $userId) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Anda tidak berhak mengubah status tiket ini']);
         }
 
-        // Kirim email ke kepala unit
-        if ($kepalaUnit && !empty($kepalaUnit['email'])) {
-            $email->clear();
-            $email->setFrom('fahren21ti@mahasiswa.pcr.ac.id', 'Help Desk Apps');
-            $email->setTo($kepalaUnit['email']);
-            $email->setSubject('Notifikasi Pengalihan Tiket - Kepala Unit');
-            $messageKepala = "
-            Halo {$kepalaUnit['full_name']},<br><br>
-            Tiket berjudul <strong>{$ticket['title']}</strong> telah dialihkan ke pegawai {$toStaff['full_name']} dengan alasan:<br>
-            <em>{$data->reason}</em><br><br>
-            Silakan cek sistem Help Desk untuk informasi lebih lanjut.<br><br>
-            Terima kasih.
-        ";
-            $email->setMessage($messageKepala);
-            $email->send();
+        if ($ticket['status'] !== 'In Progress') {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Status tiket bukan In Progress']);
         }
 
-        return $this->response->setJSON(['status' => 'success', 'message' => 'Tiket berhasil dialihkan dan email notifikasi terkirim']);
+        $this->ticketModel->update($idTiket, [
+            'status' => 'Done',
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->response->setJSON(['status' => 'success', 'message' => 'Status tiket berhasil diubah menjadi Done']);
     }
 
 
-    // Pegawai respon transfer: terima atau tolak
-    public function respondTransfer()
+    public function confirmCompletion()
     {
-        $session = session();
-        $userId = $session->get('user_id');
-        $data = $this->request->getJSON();
+        $idTiket = $this->request->getPost('id_tiket');
+        $konfirmasi = $this->request->getPost('confirm_by_requestor') ?? 0;
+        $ratingTime = $this->request->getPost('rating_time') ?? null;
+        $ratingService = $this->request->getPost('rating_service') ?? null;
+        $komentar = $this->request->getPost('komentar_penyelesaian') ?? null;
 
-        if (!$data->transfer_id || !$data->response) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Data tidak lengkap']);
+        $ticket = $this->ticketModel->find($idTiket);
+        if (!$ticket) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket tidak ditemukan']);
         }
 
-        $transfer = $this->ticketTransferModel->find($data->transfer_id);
-        if (!$transfer || $transfer['to_staff_id'] != $userId || $transfer['status'] != 'pending') {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Transfer tidak ditemukan atau sudah diproses']);
+        if ($ticket['status'] !== 'Done') {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket belum berstatus Done']);
         }
 
-        if ($data->response === 'accept') {
-            // Update ticket penanggung jawab dan status
-            $this->ticketModel->update($transfer['ticket_id'], [
-                'assigned_staff_id' => $userId,
-                'status' => 'In Progress',
-            ]);
-            // Update transfer status
-            $this->ticketTransferModel->update($transfer['id'], [
-                'status' => 'accepted',
-                'updated_at' => date('Y-m-d H:i:s')
-            ]);
-        } elseif ($data->response === 'reject') {
-            // Tolak transfer, simpan alasan penolakan
-            $reasonReject = $data->reason ?? '';
-            $this->ticketTransferModel->update($transfer['id'], [
-                'status' => 'rejected',
-                'reason' => $reasonReject,
-                'updated_at' => date('Y-m-d H:i:s')
-            ]);
-            // Update tiket status ke Menunggu supaya kepala unit assign ulang
-            $this->ticketModel->update($transfer['ticket_id'], [
-                'status' => 'Menunggu',
-                'assigned_staff_id' => null,
-                'assigned_head_id' => null
-            ]);
-        } else {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Respon tidak valid']);
-        }
+        // Update data tiket
+        $this->ticketModel->update($idTiket, [
+            'confirm_by_requestor' => 1,
+            'rating_time' => $ratingTime,
+            'rating_service' => $ratingService,
+            'komentar_penyelesaian' => $komentar,
+            'status' => 'Closed',
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
 
-        return $this->response->setJSON(['status' => 'success', 'message' => 'Respon transfer berhasil diproses']);
+        return $this->response->setJSON(['status' => 'success', 'message' => 'Konfirmasi berhasil disimpan']);
     }
 
-    // API list transfer tiket yang dialihkan ke pegawai (pending)
-    public function listTransfers()
-    {
-        $session = session();
-        $userId = $session->get('user_id');
-        $transfers = $this->ticketTransferModel->getPendingTransfersForStaff($userId);
 
-        return $this->response->setJSON($transfers);
+    public function boardStaffView()
+    {
+        return view('tickets/board_staff');
     }
 
-    public function staffList($status)
+    public function detail($id)
     {
-        $session = session();
-        $userId = $session->get('user_id');
-        $status = strtolower($status);
+        $ticket = $this->ticketModel
+            ->select('tiket.*, user.nama as assigned_nama')
+            ->join('user', 'user.id_pegawai = tiket.assigned_to', 'left')
+            ->where('id_tiket', $id)
+            ->first();
 
-        $statusDbMap = [
-            'open' => 'Open',
-            'menunggu' => 'Menunggu',
-            'inprogress' => 'In Progress',
-            'done' => 'Done'
+        if (!$ticket) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket tidak ditemukan']);
+        }
+
+        // Mengambil data requestor
+        $requestor = $this->db->table('user')->select('nama, email')->where('id_pegawai', $ticket['id_pegawai_requestor'])->get()->getRow();
+
+        // Menggunakan Carbon untuk format tanggal
+        $createdAt = Carbon::parse($ticket['created_at'])->locale('id')->isoFormat('D MMMM YYYY, HH:mm');
+
+        $data = [
+            'id_tiket' => $ticket['id_tiket'],
+            'judul' => $ticket['judul'],
+            'deskripsi' => $ticket['deskripsi'],
+            'prioritas' => $ticket['prioritas'],
+            'status' => $ticket['status'],
+            'requestor_nama' => $requestor ? $requestor->nama : '-',
+            'requestor_email' => $requestor ? $requestor->email : '-',
+            'assigned_nama' => $ticket['assigned_nama'] ?? '-',
+            'gambar' => $ticket['gambar'],
+            'created_at' => $createdAt,  // Format tanggal
+            'komentar_penyelesaian' => $ticket['komentar_penyelesaian'] ?? '-',
+            'rating_time' => $ticket['rating_time'] ?? '-',
+            'rating_service' => $ticket['rating_service'] ?? '-',
         ];
 
-        if ($status === 'transfer') {
-            $asReceiver = $this->ticketTransferModel
-                ->select('tickets.*, ticket_transfers.reason as transfer_reason, ticket_transfers.id as transfer_id, ticket_transfers.from_staff_id, ticket_transfers.to_staff_id, ticket_transfers.status as transfer_status')
-                ->join('tickets', 'tickets.id = ticket_transfers.ticket_id')
-                ->where('ticket_transfers.to_staff_id', $userId)
-                ->where('ticket_transfers.status', 'pending')
-                ->orderBy('ticket_transfers.created_at', 'DESC')
-                ->findAll();
-
-            $asSender = $this->ticketTransferModel
-                ->select('tickets.*, ticket_transfers.reason as transfer_reason, ticket_transfers.id as transfer_id, ticket_transfers.from_staff_id, ticket_transfers.to_staff_id, ticket_transfers.status as transfer_status')
-                ->join('tickets', 'tickets.id = ticket_transfers.ticket_id')
-                ->where('ticket_transfers.from_staff_id', $userId)
-                ->where('ticket_transfers.status', 'pending')
-                ->orderBy('ticket_transfers.created_at', 'DESC')
-                ->findAll();
-
-            $tickets = array_merge($asReceiver, $asSender);
-            // Hilangkan duplikat ticket_id jika perlu
-            $unique = [];
-            foreach ($tickets as $ticket) {
-                $unique[$ticket['transfer_id']] = $ticket;
-            }
-            $tickets = array_values($unique);
-
-            return $this->response->setJSON($tickets);
-        }
-
-
-
-        $statusDb = $statusDbMap[$status] ?? ucfirst($status);
-
-        $tickets = $this->ticketModel
-            ->select('tickets.*, ruangan.nama as ruangan_name, jenis_perangkat.nama as jenis_perangkat_nama, tickets.deadline')
-            ->join('ruangan', 'ruangan.id = tickets.ruangan_id', 'left')
-            ->join('jenis_perangkat', 'jenis_perangkat.id = tickets.jenis_perangkat_id', 'left')
-            ->where('assigned_staff_id', $userId)
-            ->where('status', $statusDb)
-            ->orderBy('created_at', 'DESC')
-            ->findAll();
-
-
-        return $this->response->setJSON($tickets);
-    }
-
-
-
-    // Simpan komentar belum selesai
-    public function saveComment()
-    {
-        $session = session();
-        $userId = $session->get('user_id');
-        $data = $this->request->getJSON();
-
-        if (!$data->ticket_id || !$data->comment) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Data komentar tidak lengkap']);
-        }
-
-        $commentData = [
-            'ticket_id' => $data->ticket_id,
-            'user_id' => $userId,
-            'comment' => $data->comment,
-            'created_at' => date('Y-m-d H:i:s'),
-        ];
-
-        $this->commentModel->insert($commentData);
-
-        // Update status tiket jadi "Belum Selesai"
-        $this->ticketModel->update($data->ticket_id, ['status' => 'Belum Selesai']);
-
-        return $this->response->setJSON(['status' => 'success', 'message' => 'Komentar berhasil disimpan']);
-    }
-
-    // Simpan feedback selesai
-    public function saveFeedback()
-    {
-        $session = session();
-        $requestorId = $session->get('user_id');
-        $data = $this->request->getJSON();
-
-        if (!$data->ticket_id || !isset($data->rating)) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Data feedback tidak lengkap']);
-        }
-
-        $feedbackData = [
-            'ticket_id' => $data->ticket_id,
-            'requestor_id' => $requestorId,
-            'rating' => $data->rating,
-            'suggestion' => $data->suggestion ?? '',
-            'created_at' => date('Y-m-d H:i:s'),
-        ];
-
-        $this->feedbackModel->insert($feedbackData);
-
-        // Update status tiket jadi "Selesai"
-        $this->ticketModel->update($data->ticket_id, ['status' => 'Selesai']);
-
-        return $this->response->setJSON(['status' => 'success', 'message' => 'Feedback berhasil disimpan']);
-    }
-
-    public function countByStatus($status)
-    {
-        $count = $this->ticketModel->where('status', ucfirst($status))->countAllResults();
-        return $this->response->setJSON(['count' => $count]);
+        return $this->response->setJSON(['status' => 'success', 'data' => $data]);
     }
 }

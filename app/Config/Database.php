@@ -29,7 +29,7 @@ class Database extends Config
         'hostname'     => 'localhost',
         'username'     => 'root',
         'password'     => 'BISMILLAHmysql22',
-        'database'     => 'helpdesk_db',
+        'database'     => 'db_kepegawaian',
         'DBDriver'     => 'MySQLi',
         'DBPrefix'     => '',
         'pConnect'     => false,

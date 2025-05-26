@@ -6,15 +6,9 @@ use CodeIgniter\Model;
 
 class UserModel extends Model
 {
-    protected $table      = 'users';
-    protected $primaryKey = 'id';
-
-    protected $allowedFields = ['username', 'password', 'full_name', 'role_id', 'email'];
-
-    protected $returnType = 'array';
-
-    public function getUserByUsername($username)
-    {
-        return $this->where('username', $username)->first();
-    }
+    protected $table = 'user';
+    protected $primaryKey = 'user_id';
+    protected $allowedFields = ['user_id', 'id_pegawai', 'nama', 'email', 'password', 'image', 'is_active', 'role_id', 'id_application'];
+    protected $useTimestamps = true;
+    protected $createdField  = 'date_created';
 }
