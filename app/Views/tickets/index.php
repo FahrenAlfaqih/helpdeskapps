@@ -19,6 +19,8 @@
             <thead class="bg-blue-100">
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">Judul</th>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">Kategori</th>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">SubKategori</th>
                     <th class="px-6 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">Prioritas</th>
                     <th class="px-6 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">Status</th>
                     <th class="px-6 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">Tanggal Dibuat</th>
@@ -104,6 +106,12 @@
                     data: 'judul'
                 },
                 {
+                    data: 'nama_kategori'
+                },
+                {
+                    data: 'nama_subkategori'
+                },
+                {
                     data: 'prioritas'
                 },
                 {
@@ -139,6 +147,7 @@
             }
         });
 
+
         $('#ticketsTable tbody').on('click', '.detail-btn', function() {
             const idTiket = $(this).data('id');
             $.getJSON(`<?= base_url('tickets/detail') ?>/${idTiket}`, function(response) {
@@ -161,6 +170,8 @@
                         <div class="space-y-2">
                             <p><span class="font-semibold">Judul:</span> ${data.judul}</p>
                             <p><span class="font-semibold">Deskripsi:</span> ${data.deskripsi}</p>
+                            <p><span class="font-semibold">Kategori:</span> ${data.nama_kategori || '-'}</p>
+                            <p><span class="font-semibold">Sub Kategori:</span> ${data.nama_subkategori || '-'}</p>
                         </div>
                         <!-- Kanan -->
                         <div class="space-y-2">
@@ -203,6 +214,7 @@
                 }
             });
         });
+
 
         // Tutup modal
         $('#closeModal').on('click', function() {

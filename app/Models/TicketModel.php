@@ -22,6 +22,8 @@ class TicketModel extends Model
         'deskripsi',
         'gambar',
         'id_unit_tujuan',
+        'kategori_id',    
+        'subkategori_id', 
         'prioritas',
         'status',
         'assigned_to',

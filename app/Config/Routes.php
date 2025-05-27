@@ -42,21 +42,20 @@ $routes->group('tickets', ['filter' => 'auth'], function ($routes) {
     $routes->get('detail/(:num)', 'Tickets::detail/$1');
 });
 
-$routes->group('master', ['filter' => 'auth'], function ($routes) {
-    // Ruangan
-    $routes->get('ruangan', 'MasterRuangan::index');           // halaman list ruangan
-    $routes->get('ruangan/list', 'MasterRuangan::list');       // API list ruangan (json)
-    $routes->post('ruangan/create', 'MasterRuangan::create');  // API tambah ruangan
-    $routes->post('ruangan/update/(:num)', 'MasterRuangan::update/$1');  // API update ruangan
-    $routes->post('ruangan/delete/(:num)', 'MasterRuangan::delete/$1');  // API hapus ruangan
+$routes->group('master', function ($routes) {
+    $routes->get('kategori', 'Kategori::index');
+    $routes->get('kategori/create', 'Kategori::create');
+    $routes->post('kategori/store', 'Kategori::store');
+    $routes->get('kategori/edit/(:num)', 'Kategori::edit/$1');
+    $routes->post('kategori/update/(:num)', 'Kategori::update/$1');
+    $routes->get('kategori/delete/(:num)', 'Kategori::delete/$1');
 
-    // Jenis Perangkat
-    $routes->get('jenis-perangkat', 'MasterJenisPerangkat::index');
-    $routes->get('jenis-perangkat/list', 'MasterJenisPerangkat::list');
-    $routes->get('jenis-perangkat/by-kategori/(:segment)', 'MasterJenisPerangkat::listByKategori/$1');
-    $routes->post('jenis-perangkat/create', 'MasterJenisPerangkat::create');
-    $routes->post('jenis-perangkat/update/(:num)', 'MasterJenisPerangkat::update/$1');
-    $routes->post('jenis-perangkat/delete/(:num)', 'MasterJenisPerangkat::delete/$1');
+    $routes->get('subkategori', 'SubKategori::index');
+    $routes->get('subkategori/create', 'SubKategori::create');
+    $routes->post('subkategori/store', 'SubKategori::store');
+    $routes->get('subkategori/edit/(:num)', 'SubKategori::edit/$1');
+    $routes->post('subkategori/update/(:num)', 'SubKategori::update/$1');
+    $routes->post('subkategori/delete/(:num)', 'SubKategori::delete/$1');
 });
 
 

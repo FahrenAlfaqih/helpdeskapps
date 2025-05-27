@@ -26,18 +26,36 @@ class Tickets extends Controller
 
     public function createView()
     {
+        $session = session();
+        $unitUsaha = $session->get('unit_usaha_id'); // pastikan ini tersedia
+
+        // Ambil kategori berdasar unit usaha requestor
+        $kategori = $this->db->table('kategori')
+            ->where('unit_usaha', $unitUsaha)
+            ->get()
+            ->getResultArray();
+
+        // Ambil subkategori berdasar kategori yg ada di unit usaha itu
+        // Bisa query join atau ambil per kategori nanti di frontend
+        $subkategori = $this->db->table('sub_kategori as sk')
+            ->join('kategori as k', 'sk.id_kategori = k.id_kategori')
+            ->where('k.unit_usaha', $unitUsaha)
+            ->get()
+            ->getResultArray();
 
         $allowedUnitIds = ['E13', 'E21'];
-
         $units = $this->db->table('unit_kerja')
             ->whereIn('id_unit_kerja', $allowedUnitIds)
             ->get()
             ->getResultArray();
 
-
-
-        return view('tickets/create', ['units' => $units]);
+        return view('tickets/create', [
+            'units' => $units,
+            'kategori' => $kategori,
+            'subkategori' => $subkategori,
+        ]);
     }
+
 
 
 
@@ -64,6 +82,8 @@ class Tickets extends Controller
             'deskripsi' => 'required',
             'prioritas' => 'required|in_list[High,Medium,Low]',
             'id_unit_tujuan' => 'required',
+            'kategori' => 'required',
+            'subkategori' => 'required',
             'gambar' => 'permit_empty|is_image[gambar]|max_size[gambar,2048]',
         ];
 
@@ -80,6 +100,8 @@ class Tickets extends Controller
             }
         }
 
+
+
         // Simpan tiket
         $this->ticketModel->insert([
             'id_pegawai_requestor' => $idPegawaiRequestor,
@@ -93,6 +115,8 @@ class Tickets extends Controller
             'judul' => $this->request->getPost('judul'),
             'deskripsi' => $this->request->getPost('deskripsi'),
             'id_unit_tujuan' => $this->request->getPost('id_unit_tujuan'),
+            'kategori_id' => $this->request->getPost('kategori'),
+            'subkategori_id' => $this->request->getPost('subkategori'),
             'prioritas' => $this->request->getPost('prioritas'),
             'gambar' => $fileName,
             'status' => 'Open',
@@ -102,41 +126,55 @@ class Tickets extends Controller
         return redirect()->to('/tickets')->with('success', 'Tiket berhasil dibuat dan dikirim ke unit terkait.');
     }
 
-    // API list tiket requestor (pakai DataTables)
     public function list()
     {
         $request = service('request');
         $session = session();
 
-        $start = (int) $request->getGet('start') ?? 0;
-        $length = (int) $request->getGet('length') ?? 10;
-        $draw = (int) $request->getGet('draw') ?? 1;
+        $start = (int) ($request->getGet('start') ?? 0);
+        $length = (int) ($request->getGet('length') ?? 10);
+        $draw = (int) ($request->getGet('draw') ?? 1);
         $searchValue = $request->getGet('search')['value'] ?? '';
 
         $idPegawai = $session->get('id_pegawai');
 
-        $builder = $this->ticketModel->where('id_pegawai_requestor', $idPegawai);
+        // Query builder dengan join kategori & subkategori
+        $builder = $this->db->table('tiket t');
+        $builder->select('t.id_tiket, t.judul, k.nama_kategori, sk.nama_subkategori, t.prioritas, t.status, t.created_at, t.confirm_by_requestor');
+        $builder->join('kategori k', 't.kategori_id = k.id_kategori', 'left');
+        $builder->join('sub_kategori sk', 't.subkategori_id = sk.id_subkategori', 'left');
+        $builder->where('t.id_pegawai_requestor', $idPegawai);
 
+        // Untuk hitung total data sebelum filter search
+        $totalData = $builder->countAllResults(false);
+
+        // Jika ada pencarian
         if (!empty($searchValue)) {
             $builder->groupStart()
-                ->like('judul', $searchValue)
-                ->orLike('deskripsi', $searchValue)
+                ->like('t.judul', $searchValue)
+                ->orLike('t.deskripsi', $searchValue)
+                ->orLike('k.nama_kategori', $searchValue)
+                ->orLike('sk.nama_subkategori', $searchValue)
                 ->groupEnd();
         }
 
-        $totalData = $builder->countAllResults(false);
+        // Hitung total setelah filter search
+        $totalFiltered = $builder->countAllResults(false);
 
-        $data = $builder->orderBy('created_at', 'DESC')
+        // Ambil data dengan limit dan offset
+        $data = $builder->orderBy('t.created_at', 'DESC')
             ->limit($length, $start)
-            ->findAll();
+            ->get()
+            ->getResultArray();
 
         return $this->response->setJSON([
             "draw" => $draw,
             "recordsTotal" => $totalData,
-            "recordsFiltered" => $totalData,
+            "recordsFiltered" => $totalFiltered,
             "data" => $data,
         ]);
     }
+
 
     public function listForUnit()
     {
@@ -376,8 +414,10 @@ class Tickets extends Controller
     public function detail($id)
     {
         $ticket = $this->ticketModel
-            ->select('tiket.*, user.nama as assigned_nama')
+            ->select('tiket.*, user.nama as assigned_nama, k.nama_kategori, sk.nama_subkategori')
             ->join('user', 'user.id_pegawai = tiket.assigned_to', 'left')
+            ->join('kategori k', 'tiket.kategori_id = k.id_kategori', 'left')
+            ->join('sub_kategori sk', 'tiket.subkategori_id = sk.id_subkategori', 'left')
             ->where('id_tiket', $id)
             ->first();
 
@@ -405,6 +445,8 @@ class Tickets extends Controller
             'komentar_penyelesaian' => $ticket['komentar_penyelesaian'] ?? '-',
             'rating_time' => $ticket['rating_time'] ?? '-',
             'rating_service' => $ticket['rating_service'] ?? '-',
+            'nama_kategori' => $ticket['nama_kategori'] ?? '-',
+            'nama_subkategori' => $ticket['nama_subkategori'] ?? '-',
         ];
 
         return $this->response->setJSON(['status' => 'success', 'data' => $data]);

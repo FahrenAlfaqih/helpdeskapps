@@ -17,14 +17,15 @@
 
 </head>
 
-<body class="bg-white text-blue-900 flex h-screen overflow-hidden font-sans leading-relaxed">
+<body class="bg-white text-blue-900 flex h-screen font-sans leading-relaxed">
 
     <!-- Sidebar -->
-    <?php $roleId = session()->get('role_id'); ?>
     <?php $uri = service('uri'); ?>
+    <?php $unitLevelId = session()->get('unit_level_id'); ?>
+
 
     <aside
-        class="w-64 bg-white shadow-md sticky top-4 left-4 h-[calc(100vh-2rem)] flex flex-col rounded-lg p-5 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-400 scrollbar-track-blue-100">
+        class="w-64 bg-white shadow-md fixed top-4 left-4 h-[calc(100vh-2rem)] flex flex-col rounded-lg p-5 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-400 scrollbar-track-blue-100">
         <div class="mb-8 text-2xl font-semibold text-blue-800 select-none cursor-default tracking-wide">
             Help Desk
         </div>
@@ -49,6 +50,19 @@
                 Tickets Board
             </a>
 
+            <?php if ($unitLevelId === 'A13'): ?>
+                <a href="/master/kategori"
+                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
+            <?= $uri->getSegment(1) == 'master' && $uri->getSegment(2) == 'kategori' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
+                    Master Data Kategori
+                </a>
+                <a href="/master/subkategori"
+                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
+            <?= $uri->getSegment(1) == 'master' && $uri->getSegment(2) == 'subkategori' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
+                    Master Data Sub Kategori
+                </a>
+            <?php endif; ?>
+
             <!-- Spacer agar Logout selalu di bawah -->
             <div class="flex-1"></div>
 
@@ -60,12 +74,10 @@
         </nav>
     </aside>
 
-
     <!-- Main content -->
-    <div class="flex-1 flex flex-col overflow-auto">
-
+    <div class="flex-1 flex flex-col overflow-auto" style="margin-left: 280px;">
         <header
-            class="sticky top-4 left-0 right-0 z-20 bg-white border border-blue-200 rounded-lg shadow-md px-8 py-5 flex items-center justify-between mx-6"
+            class="sticky top-4 z-20 bg-white border border-blue-200 rounded-lg shadow-md px-8 py-5 flex items-center justify-between mx-6"
             style="line-height: 1.5;">
             <h1 class="text-lg font-semibold select-none cursor-default tracking-wide">PT. Bakti Timah Medika</h1>
 
@@ -76,7 +88,7 @@
                         <?= esc(session()->get('nama') ?? 'User') ?>
                     </div>
                     <div class="text-sm text-blue-600 px-5">
-                        <?= esc(session()->get('unit_usaha') ?? '-') ?> - <?= esc(session()->get('unit_kerja') ?? '-') ?>
+                        <?= esc(session()->get('unit_level_name') ?? '-') ?> | <?= esc(session()->get('unit_usaha') ?? '-') ?> - <?= esc(session()->get('unit_kerja') ?? '-') ?>
                     </div>
                 </div>
 
@@ -87,13 +99,12 @@
             </div>
         </header>
 
-
-
         <!-- Content -->
-        <main class="flex-1 p-6 overflow-auto bg-white mx-6 my-4 rounded-lg shadow-md">
+        <main class="flex-1 p-6 overflow-auto bg-white mx-6 my-4 rounded-lg ">
             <?= $this->renderSection('content') ?>
         </main>
     </div>
+
 
 </body>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
