@@ -2,8 +2,8 @@
 
 namespace App\Controllers;
 
-use App\Models\SubKategoriModel;
-use App\Models\KategoriModel;
+use App\Models\M_Kategori;
+use App\Models\M_SubKategori;
 use CodeIgniter\Controller;
 
 class SubKategori extends Controller
@@ -14,8 +14,8 @@ class SubKategori extends Controller
 
     public function __construct()
     {
-        $this->subKategoriModel = new SubKategoriModel();
-        $this->kategoriModel = new KategoriModel();
+        $this->subKategoriModel = new M_SubKategori();
+        $this->kategoriModel = new M_Kategori();
         $this->session = session();
     }
 
@@ -27,7 +27,7 @@ class SubKategori extends Controller
         $builder = $this->subKategoriModel->builder();
         $builder->select('sub_kategori.*, kategori.nama_kategori, kategori.unit_usaha');
         $builder->join('kategori', 'sub_kategori.id_kategori = kategori.id_kategori');
-        $builder->where('kategori.unit_usaha', $unitUsaha);
+        // $builder->where('kategori.unit_usaha', $unitUsaha);
 
         $data['subkategori'] = $builder->get()->getResultArray();
 
@@ -38,8 +38,7 @@ class SubKategori extends Controller
     {
         $unitUsaha = $this->session->get('unit_usaha_id');
 
-        // Ambil kategori sesuai unit usaha
-        $kategoriModel = new \App\Models\KategoriModel();
+        $kategoriModel = new M_Kategori();
         $data['kategori'] = $kategoriModel->where('unit_usaha', $unitUsaha)->findAll();
 
         return view('subkategori/create', $data);
@@ -47,7 +46,7 @@ class SubKategori extends Controller
 
     public function store()
     {
-        $unitUsaha = $this->session->get('unit_usaha_id');
+        // $unitUsaha = $this->session->get('unit_usaha_id');
         $validation =  \Config\Services::validation();
 
         $rules = [
@@ -62,10 +61,18 @@ class SubKategori extends Controller
             ]);
         }
 
-        $this->subKategoriModel->save([
+        $data = [
+            'id_subkategori' => $this->subKategoriModel->generateIdSubKategori(),
             'id_kategori' => $this->request->getPost('id_kategori'),
             'nama_subkategori' => $this->request->getPost('nama_subkategori'),
-        ]);
+        ];
+
+        $this->subKategoriModel->insert($data);
+
+        // $this->subKategoriModel->save([
+        //     'id_kategori' => $this->request->getPost('id_kategori'),
+        //     'nama_subkategori' => $this->request->getPost('nama_subkategori'),
+        // ]);
 
         return $this->response->setJSON([
             'status' => 'success',
@@ -132,7 +139,7 @@ class SubKategori extends Controller
         }
 
         // Ambil kategori terkait
-        $kategori = (new \App\Models\KategoriModel())->find($subkategori['id_kategori']);
+        $kategori = (new M_Kategori())->find($subkategori['id_kategori']);
         if (!$kategori) {
             return $this->response->setJSON(['status' => 'error', 'message' => 'Kategori terkait tidak ditemukan']);
         }

@@ -39,23 +39,30 @@ $routes->group('tickets', ['filter' => 'auth'], function ($routes) {
 
 
     $routes->get('board-staff', 'Tickets::boardStaffView');
-    $routes->get('detail/(:num)', 'Tickets::detail/$1');
+    $routes->get('detail/(:segment)', 'Tickets::detail/$1');
 });
 
 $routes->group('master', function ($routes) {
     $routes->get('kategori', 'Kategori::index');
     $routes->get('kategori/create', 'Kategori::create');
     $routes->post('kategori/store', 'Kategori::store');
-    $routes->get('kategori/edit/(:num)', 'Kategori::edit/$1');
-    $routes->post('kategori/update/(:num)', 'Kategori::update/$1');
-    $routes->get('kategori/delete/(:num)', 'Kategori::delete/$1');
+    $routes->get('kategori/edit/(:segment)', 'Kategori::edit/$1');
+    $routes->post('kategori/update/(:segment)', 'Kategori::update/$1');
+    $routes->get('kategori/delete/(:segment)', 'Kategori::delete/$1');
 
     $routes->get('subkategori', 'SubKategori::index');
     $routes->get('subkategori/create', 'SubKategori::create');
     $routes->post('subkategori/store', 'SubKategori::store');
-    $routes->get('subkategori/edit/(:num)', 'SubKategori::edit/$1');
-    $routes->post('subkategori/update/(:num)', 'SubKategori::update/$1');
-    $routes->post('subkategori/delete/(:num)', 'SubKategori::delete/$1');
+    $routes->get('subkategori/edit/(:segment)', 'SubKategori::edit/$1');
+    $routes->post('subkategori/update/(:segment)', 'SubKategori::update/$1');
+    $routes->post('subkategori/delete/(:segment)', 'SubKategori::delete/$1');
+
+    $routes->get('ruangan', 'Ruangan::index');
+    $routes->get('ruangan/create', 'Ruangan::create');
+    $routes->post('ruangan/store', 'Ruangan::store');
+    $routes->get('ruangan/edit/(:segment)', 'Ruangan::edit/$1');
+    $routes->post('ruangan/update/(:segment)', 'Ruangan::update/$1');
+    $routes->get('ruangan/delete/(:segment)', 'Ruangan::delete/$1');
 });
 
 

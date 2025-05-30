@@ -1,0 +1,155 @@
+<?= $this->extend('layouts/main') ?>
+<?= $this->section('content') ?>
+
+<div class="max-w-7xl mx-auto bg-white p-6 rounded shadow">
+    <h2 class="text-3xl font-bold mb-8 text-blue-900 border-b border-blue-300 pb-2 select-none">Daftar Ruangan</h2>
+
+    <a href="<?= base_url('master/ruangan/create') ?>"
+       class="inline-block mb-6 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow hover:bg-blue-700 transition duration-200">
+        Tambah Ruangan Baru
+    </a>
+
+    <div class="overflow-x-auto rounded-lg">
+        <table id="ruanganTable" class="min-w-full divide-y divide-gray-200 bg-white">
+            <thead class="bg-blue-100">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">Nama Ruangan</th>
+                    <th class="px-6 py-3 text-center text-xs font-semibold text-blue-700 uppercase tracking-wider">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($ruangan as $r): ?>
+                    <tr>
+                        <td class="px-6 py-3"><?= esc($r['nm_ruangan']) ?></td>
+                        <td class="px-6 py-3 text-center space-x-2">
+                            <button class="edit-btn text-blue-600 hover:underline" data-id="<?= esc($r['id_ruangan']) ?>">Edit</button>
+                            <a href="<?= base_url('master/ruangan/delete/' . $r['id_ruangan']) ?>"
+                               class="delete-btn text-red-600 hover:underline cursor-pointer">
+                                Hapus
+                            </a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Edit -->
+<div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+        <button id="closeModal" class="absolute top-3 right-3 text-gray-600 hover:text-gray-900 text-3xl font-bold leading-none">&times;</button>
+        <h3 class="text-xl font-semibold mb-4 text-blue-900 select-none">Edit Ruangan</h3>
+
+        <form id="editForm">
+            <?= csrf_field() ?>
+            <input type="hidden" name="id_ruangan" id="edit_id_ruangan" />
+
+            <label for="edit_nm_ruangan" class="block font-semibold mb-1">Nama Ruangan</label>
+            <input type="text" name="nm_ruangan" id="edit_nm_ruangan" class="w-full border rounded px-3 py-2 mb-4" required />
+
+            <div class="flex justify-end space-x-3">
+                <button type="button" id="cancelBtn" class="px-4 py-2 rounded border border-gray-300 hover:bg-gray-100 transition">Batal</button>
+                <button type="submit" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition">Simpan</button>
+            </div>
+        </form>
+
+        <div id="editErrors" class="mt-4 text-red-600 text-sm"></div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    $(document).ready(function() {
+        $('.edit-btn').on('click', function() {
+            let id = $(this).data('id');
+            $('#editErrors').html('');
+            $.ajax({
+                url: `<?= base_url('master/ruangan/edit') ?>/${id}`,
+                method: 'GET',
+                dataType: 'json',
+                success: function(res) {
+                    $('#edit_id_ruangan').val(res.id_ruangan);
+                    $('#edit_nm_ruangan').val(res.nm_ruangan);
+                    $('#editModal').removeClass('hidden');
+                },
+                error: function() {
+                    alert('Gagal mengambil data ruangan.');
+                }
+            });
+        });
+
+        $('#closeModal, #cancelBtn').on('click', function() {
+            $('#editModal').addClass('hidden');
+            $('#editErrors').html('');
+        });
+
+        $('#editForm').on('submit', function(e) {
+            e.preventDefault();
+            $('#editErrors').html('');
+
+            let id = $('#edit_id_ruangan').val();
+            let nmRuangan = $('#edit_nm_ruangan').val();
+            let csrfToken = $('input[name="<?= csrf_token() ?>"]').val();
+
+            $.ajax({
+                url: `<?= base_url('master/ruangan/update') ?>/${id}`,
+                method: 'POST',
+                data: {
+                    nm_ruangan: nmRuangan,
+                    <?= csrf_token() ?>: csrfToken
+                },
+                success: function(res) {
+                    if (res.status === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: 'Ruangan berhasil diupdate.',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => location.reload());
+                    } else {
+                        $('#editErrors').html(res.message || 'Terjadi kesalahan.');
+                    }
+                },
+                error: function(xhr) {
+                    let errors = xhr.responseJSON?.errors || {};
+                    let messages = Object.values(errors).flat().join('<br>');
+                    $('#editErrors').html(messages);
+                }
+            });
+        });
+
+        $('.delete-btn').on('click', function(e) {
+            e.preventDefault();
+            const url = $(this).attr('href');
+            Swal.fire({
+                title: 'Yakin ingin hapus?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#aaa',
+                confirmButtonText: 'Ya, hapus!',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = url;
+                }
+            });
+        });
+    });
+
+    <?php if (session()->getFlashdata('success')): ?>
+        Swal.fire({
+            icon: 'success',
+            title: 'Berhasil',
+            text: "<?= session()->getFlashdata('success') ?>",
+            timer: 2000,
+            showConfirmButton: false
+        });
+    <?php endif; ?>
+</script>
+
+<?= $this->endSection() ?>

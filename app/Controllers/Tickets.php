@@ -3,7 +3,7 @@
 namespace App\Controllers;
 
 use CodeIgniter\Controller;
-use App\Models\TicketModel;
+use App\Models\M_Tiket;
 use Config\Database;
 use Carbon\Carbon;
 
@@ -15,7 +15,7 @@ class Tickets extends Controller
     public function __construct()
     {
         helper(['form', 'url', 'session']);
-        $this->ticketModel = new TicketModel();
+        $this->ticketModel = new M_Tiket();
         $this->db = Database::connect();
     }
 
@@ -99,11 +99,8 @@ class Tickets extends Controller
                 $file->move(WRITEPATH . 'uploads', $fileName);
             }
         }
-
-
-
-        // Simpan tiket
-        $this->ticketModel->insert([
+        $data = [
+            'id_tiket' => $this->ticketModel->generateIdTiket(),
             'id_pegawai_requestor' => $idPegawaiRequestor,
             'unit_level_requestor' => $penempatan->id_unit_level ?? null,
             'unit_bisnis_requestor' => $penempatan->id_unit_bisnis ?? null,
@@ -120,8 +117,28 @@ class Tickets extends Controller
             'prioritas' => $this->request->getPost('prioritas'),
             'gambar' => $fileName,
             'status' => 'Open',
-        ]);
+        ];
 
+        $this->ticketModel->insert($data);
+
+        // $this->ticketModel->insert([
+        //     'id_pegawai_requestor' => $idPegawaiRequestor,
+        //     'unit_level_requestor' => $penempatan->id_unit_level ?? null,
+        //     'unit_bisnis_requestor' => $penempatan->id_unit_bisnis ?? null,
+        //     'unit_usaha_requestor' => $penempatan->id_unit_usaha ?? null,
+        //     'unit_organisasi_requestor' => $penempatan->id_unit_organisasi ?? null,
+        //     'unit_kerja_requestor' => $penempatan->id_unit_kerja ?? null,
+        //     'unit_kerja_sub_requestor' => $penempatan->id_unit_kerja_sub ?? null,
+        //     'unit_lokasi_requestor' => $penempatan->id_unit_lokasi ?? null,
+        //     'judul' => $this->request->getPost('judul'),
+        //     'deskripsi' => $this->request->getPost('deskripsi'),
+        //     'id_unit_tujuan' => $this->request->getPost('id_unit_tujuan'),
+        //     'kategori_id' => $this->request->getPost('kategori'),
+        //     'subkategori_id' => $this->request->getPost('subkategori'),
+        //     'prioritas' => $this->request->getPost('prioritas'),
+        //     'gambar' => $fileName,
+        //     'status' => 'Open',
+        // ]);
 
         return redirect()->to('/tickets')->with('success', 'Tiket berhasil dibuat dan dikirim ke unit terkait.');
     }

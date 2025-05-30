@@ -2,7 +2,8 @@
 
 namespace App\Controllers;
 
-use App\Models\KategoriModel;
+use App\Models\M_Kategori;
+
 use CodeIgniter\Controller;
 
 class Kategori extends Controller
@@ -12,30 +13,28 @@ class Kategori extends Controller
 
     public function __construct()
     {
-        $this->kategoriModel = new KategoriModel();
+        $this->kategoriModel = new M_Kategori();
         $this->session = session();
     }
 
-    // List semua kategori yang sesuai unit usaha session
     public function index()
     {
         $unitUsaha = $this->session->get('unit_usaha_id');
-        
 
-        $data['kategori'] = $this->kategoriModel
-            ->where('unit_usaha', $unitUsaha)
-            ->findAll();
+        $data['kategori'] = $this->kategoriModel->findAll();
+
+        // $data['kategori'] = $this->kategoriModel
+        //     ->where('unit_usaha', $unitUsaha)
+        //     ->findAll();
 
         return view('kategori/index', $data);
     }
 
-    // Tampilkan form tambah kategori
     public function create()
     {
         return view('kategori/create');
     }
 
-    // Simpan kategori baru
     public function store()
     {
         $unitUsaha = $this->session->get('unit_usaha_id');
@@ -50,15 +49,21 @@ class Kategori extends Controller
             return redirect()->back()->withInput()->with('errors', $validation->getErrors());
         }
 
-        $this->kategoriModel->save([
+        $data = [
+            'id_kategori' => $this->kategoriModel->generateIdKategori(),
             'nama_kategori' => $this->request->getPost('nama_kategori'),
             'unit_usaha' => $unitUsaha,
-        ]);
+        ];
 
+        $this->kategoriModel->insert($data);
+
+        // $this->kategoriModel->save([
+        //     'nama_kategori' => $this->request->getPost('nama_kategori'),
+        //     'unit_usaha' => $unitUsaha,
+        // ]);
         return redirect()->to('master/kategori')->with('success', 'Kategori berhasil ditambahkan.');
     }
 
-    // Form edit kategori
     public function edit($id = null)
     {
         $kategori = $this->kategoriModel->find($id);
@@ -72,7 +77,6 @@ class Kategori extends Controller
         return $this->response->setJSON($kategori);
     }
 
-    // Update kategori
     public function update($id = null)
     {
         $kategori = $this->kategoriModel->find($id);
@@ -100,7 +104,6 @@ class Kategori extends Controller
     }
 
 
-    // Hapus kategori
     public function delete($id)
     {
         $kategori = $this->kategoriModel->find($id);

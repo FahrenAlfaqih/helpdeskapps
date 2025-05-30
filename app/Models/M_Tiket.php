@@ -4,12 +4,13 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class TicketModel extends Model
+class M_Tiket extends Model
 {
     protected $table = 'tiket';
     protected $primaryKey = 'id_tiket';
 
     protected $allowedFields = [
+        'id_tiket',
         'id_pegawai_requestor',
         'unit_level_requestor',
         'unit_bisnis_requestor',
@@ -22,8 +23,8 @@ class TicketModel extends Model
         'deskripsi',
         'gambar',
         'id_unit_tujuan',
-        'kategori_id',    
-        'subkategori_id', 
+        'kategori_id',
+        'subkategori_id',
         'prioritas',
         'status',
         'assigned_to',
@@ -46,4 +47,22 @@ class TicketModel extends Model
         'prioritas' => 'in_list[High,Medium,Low]',
         'status' => 'in_list[Open,In Progress,Done,Closed]',
     ];
+
+    public function generateIdTiket()
+    {
+        $lastRecord = $this->select('id_tiket')
+            ->like('id_tiket', 'TK_')
+            ->orderBy('id_tiket', 'DESC')
+            ->limit(1)
+            ->first();
+
+        if (!$lastRecord) {
+            return 'TK_001';
+        }
+
+        $lastId = $lastRecord['id_tiket'];
+        $num = (int) substr($lastId, 3); 
+        $num++;
+        return 'TK_' . str_pad($num, 3, '0', STR_PAD_LEFT);
+    }
 }

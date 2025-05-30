@@ -54,12 +54,17 @@
                 <a href="/master/kategori"
                     class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
             <?= $uri->getSegment(1) == 'master' && $uri->getSegment(2) == 'kategori' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
-                    Master Data Kategori
+                    Master Kategori
                 </a>
                 <a href="/master/subkategori"
                     class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
             <?= $uri->getSegment(1) == 'master' && $uri->getSegment(2) == 'subkategori' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
-                    Master Data Sub Kategori
+                    Master Sub Kategori
+                </a>
+                <a href="/master/ruangan"
+                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
+            <?= $uri->getSegment(1) == 'master' && $uri->getSegment(2) == 'ruangan' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
+                    Master Ruangan
                 </a>
             <?php endif; ?>
 
