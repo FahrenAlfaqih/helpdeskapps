@@ -31,7 +31,7 @@ class Auth extends Controller
 
         $db = Database::connect();
         $builder = $db->table('pegawai_penempatan as pp');
-        $builder->select('uu.id_unit_usaha, uu.nm_unit_usaha, uk.nm_unit_kerja, ul.id_unit_level, ul.nm_unit_level');
+        $builder->select('uu.id_unit_usaha, uu.nm_unit_usaha,uk.id_unit_kerja, uk.nm_unit_kerja, ul.id_unit_level, ul.nm_unit_level');
         $builder->join('unit_usaha uu', 'pp.id_unit_usaha = uu.id_unit_usaha', 'left');
         $builder->join('unit_kerja uk', 'pp.id_unit_kerja = uk.id_unit_kerja', 'left');
         $builder->join('unit_level ul', 'pp.id_unit_level = ul.id_unit_level', 'left');  // join tabel unit_level
@@ -48,6 +48,7 @@ class Auth extends Controller
             'unit_usaha_id' => $penempatan['id_unit_usaha'] ?? '',
             'unit_usaha' => $penempatan['nm_unit_usaha'] ?? '',
             'unit_kerja' => $penempatan['nm_unit_kerja'] ?? '',
+            'unit_kerja_id' => $penempatan['id_unit_kerja'] ?? '',
             'unit_level_id' => $penempatan['id_unit_level'] ?? '',
             'unit_level_name' => $penempatan['nm_unit_level'] ?? '',
             'logged_in' => true,

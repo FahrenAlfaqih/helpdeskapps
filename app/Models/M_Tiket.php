@@ -25,10 +25,12 @@ class M_Tiket extends Model
         'id_unit_tujuan',
         'kategori_id',
         'subkategori_id',
+        'id_ruangan',
         'prioritas',
         'status',
         'assigned_to',
         'komentar_penyelesaian',
+        'komentar_staff',
         'confirm_by_requestor',
         'rating_time',
         'rating_service',
@@ -44,7 +46,7 @@ class M_Tiket extends Model
     protected $validationRules = [
         'judul' => 'required|max_length[255]',
         'deskripsi' => 'required',
-        'prioritas' => 'in_list[High,Medium,Low]',
+        'prioritas' => 'permit_empty|in_list[High,Medium,Low]',
         'status' => 'in_list[Open,In Progress,Done,Closed]',
     ];
 
@@ -61,7 +63,7 @@ class M_Tiket extends Model
         }
 
         $lastId = $lastRecord['id_tiket'];
-        $num = (int) substr($lastId, 3); 
+        $num = (int) substr($lastId, 3);
         $num++;
         return 'TK_' . str_pad($num, 3, '0', STR_PAD_LEFT);
     }

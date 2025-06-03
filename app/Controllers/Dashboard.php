@@ -1,5 +1,6 @@
 <?php namespace App\Controllers;
 
+use App\Models\M_Tiket;
 use CodeIgniter\Controller;
 use App\Models\TicketModel;
 
@@ -10,7 +11,7 @@ class Dashboard extends Controller
     public function __construct()
     {
         helper(['url', 'session']);
-        $this->ticketModel = new TicketModel();
+        $this->ticketModel = new M_Tiket();
     }
 
     public function index()

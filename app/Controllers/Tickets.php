@@ -6,11 +6,44 @@ use CodeIgniter\Controller;
 use App\Models\M_Tiket;
 use Config\Database;
 use Carbon\Carbon;
+use Config\Services;
 
 class Tickets extends Controller
 {
     protected $ticketModel;
     protected $db;
+
+    protected function sendEmailToUnitTujuan($id_unit_tujuan, $unit_usaha, $ticketData)
+    {
+        $builder = $this->db->table('pegawai_penempatan pp');
+        $builder->select('u.email, u.nama');
+        $builder->join('user u', 'u.id_pegawai = pp.id_pegawai');
+        $builder->where('pp.id_unit_kerja', $id_unit_tujuan);
+        $builder->where('pp.id_unit_usaha', $unit_usaha);
+        $emails = $builder->get()->getResultArray();
+
+        $emailService = Services::email();
+
+        foreach ($emails as $user) {
+            $emailService->clear();
+            $emailService->setTo($user['email']);
+            $emailService->setSubject("Tiket Baru Masuk: " . $ticketData['judul']);
+            $emailService->setMessage("Halo {$user['nama']},\n\nAda tiket baru yang masuk ke unit Anda dengan judul:\n\n" . $ticketData['judul'] . "\n\nSilakan cek sistem untuk detailnya.");
+            $emailService->send();
+        }
+    }
+
+    protected function sendEmailToRequestor($requestorEmail, $ticketData, $subject, $message)
+    {
+        $emailService = Services::email();
+
+        $emailService->clear();
+        $emailService->setTo($requestorEmail);
+        $emailService->setSubject($subject);
+        $emailService->setMessage($message);
+        $emailService->send();
+    }
+
 
     public function __construct()
     {
@@ -29,21 +62,24 @@ class Tickets extends Controller
         $session = session();
         $unitUsaha = $session->get('unit_usaha_id'); // pastikan ini tersedia
 
-        // Ambil kategori berdasar unit usaha requestor
         $kategori = $this->db->table('kategori')
-            ->where('unit_usaha', $unitUsaha)
+            // ->where('unit_usaha', $unitUsaha)
             ->get()
             ->getResultArray();
 
-        // Ambil subkategori berdasar kategori yg ada di unit usaha itu
-        // Bisa query join atau ambil per kategori nanti di frontend
         $subkategori = $this->db->table('sub_kategori as sk')
             ->join('kategori as k', 'sk.id_kategori = k.id_kategori')
-            ->where('k.unit_usaha', $unitUsaha)
+            // ->where('k.unit_usaha', $unitUsaha)
+            ->get()
+            ->getResultArray();
+
+        $ruangan = $this->db->table('ruangan')
+            // ->where('k.unit_usaha', $unitUsaha)
             ->get()
             ->getResultArray();
 
         $allowedUnitIds = ['E13', 'E21'];
+
         $units = $this->db->table('unit_kerja')
             ->whereIn('id_unit_kerja', $allowedUnitIds)
             ->get()
@@ -53,13 +89,10 @@ class Tickets extends Controller
             'units' => $units,
             'kategori' => $kategori,
             'subkategori' => $subkategori,
+            'ruangan' => $ruangan,
         ]);
     }
 
-
-
-
-    // Simpan tiket baru, simpan juga data penempatan requestor dan unit tujuan tiket
     public function create()
     {
         $session = session();
@@ -80,7 +113,7 @@ class Tickets extends Controller
         $rules = [
             'judul' => 'required|max_length[255]',
             'deskripsi' => 'required',
-            'prioritas' => 'required|in_list[High,Medium,Low]',
+            // 'prioritas' => 'required|in_list[High,Medium,Low]',
             'id_unit_tujuan' => 'required',
             'kategori' => 'required',
             'subkategori' => 'required',
@@ -114,32 +147,15 @@ class Tickets extends Controller
             'id_unit_tujuan' => $this->request->getPost('id_unit_tujuan'),
             'kategori_id' => $this->request->getPost('kategori'),
             'subkategori_id' => $this->request->getPost('subkategori'),
-            'prioritas' => $this->request->getPost('prioritas'),
+            'id_ruangan' => $this->request->getPost('id_ruangan'),
+            'prioritas' => 'Low',
+            'komentar_staff' => null,
             'gambar' => $fileName,
             'status' => 'Open',
         ];
 
         $this->ticketModel->insert($data);
-
-        // $this->ticketModel->insert([
-        //     'id_pegawai_requestor' => $idPegawaiRequestor,
-        //     'unit_level_requestor' => $penempatan->id_unit_level ?? null,
-        //     'unit_bisnis_requestor' => $penempatan->id_unit_bisnis ?? null,
-        //     'unit_usaha_requestor' => $penempatan->id_unit_usaha ?? null,
-        //     'unit_organisasi_requestor' => $penempatan->id_unit_organisasi ?? null,
-        //     'unit_kerja_requestor' => $penempatan->id_unit_kerja ?? null,
-        //     'unit_kerja_sub_requestor' => $penempatan->id_unit_kerja_sub ?? null,
-        //     'unit_lokasi_requestor' => $penempatan->id_unit_lokasi ?? null,
-        //     'judul' => $this->request->getPost('judul'),
-        //     'deskripsi' => $this->request->getPost('deskripsi'),
-        //     'id_unit_tujuan' => $this->request->getPost('id_unit_tujuan'),
-        //     'kategori_id' => $this->request->getPost('kategori'),
-        //     'subkategori_id' => $this->request->getPost('subkategori'),
-        //     'prioritas' => $this->request->getPost('prioritas'),
-        //     'gambar' => $fileName,
-        //     'status' => 'Open',
-        // ]);
-
+        $this->sendEmailToUnitTujuan($data['id_unit_tujuan'], $data['unit_usaha_requestor'], $data);
         return redirect()->to('/tickets')->with('success', 'Tiket berhasil dibuat dan dikirim ke unit terkait.');
     }
 
@@ -155,11 +171,12 @@ class Tickets extends Controller
 
         $idPegawai = $session->get('id_pegawai');
 
-        // Query builder dengan join kategori & subkategori
+
         $builder = $this->db->table('tiket t');
-        $builder->select('t.id_tiket, t.judul, k.nama_kategori, sk.nama_subkategori, t.prioritas, t.status, t.created_at, t.confirm_by_requestor');
+        $builder->select('t.id_tiket, t.judul, k.nama_kategori, sk.nama_subkategori, r.nm_ruangan, t.prioritas, t.status, t.created_at, t.confirm_by_requestor');
         $builder->join('kategori k', 't.kategori_id = k.id_kategori', 'left');
         $builder->join('sub_kategori sk', 't.subkategori_id = sk.id_subkategori', 'left');
+        $builder->join('ruangan r', 't.id_ruangan = r.id_ruangan', 'left');
         $builder->where('t.id_pegawai_requestor', $idPegawai);
 
         // Untuk hitung total data sebelum filter search
@@ -277,72 +294,15 @@ class Tickets extends Controller
     }
 
 
-    // public function listForUnit()
-    // {
-    //     $session = session();
-    //     $idPegawai = $session->get('id_pegawai');
-
-    //     // Ambil penempatan pegawai (unit usaha dan unit kerja)
-    //     $builder = $this->db->table('pegawai_penempatan as pp');
-    //     $builder->select('pp.id_unit_level, pp.id_unit_bisnis, pp.id_unit_usaha, pp.id_unit_organisasi, pp.id_unit_kerja, pp.id_unit_kerja_sub, pp.id_unit_lokasi');
-    //     $builder->where('pp.id_pegawai', $idPegawai);
-    //     $penempatan = $builder->get()->getRow();
-
-
-    //     if (!$penempatan) {
-    //         return $this->response->setJSON(['error' => 'Penempatan pegawai tidak ditemukan']);
-    //     }
-
-    //     // Buat query tiket dengan join ke user untuk mendapatkan nama assigned pegawai
-    //     $builder = $this->db->table('tiket t');
-    //     $builder->select('t.*, u.nama as assigned_nama, ur.nama as requestor_nama');
-    //     $builder->join('user u', 'u.id_pegawai = t.assigned_to', 'left');
-    //     $builder->join('user ur', 'ur.id_pegawai = t.id_pegawai_requestor', 'left'); // Join untuk requestor
-
-    //     $builder->groupStart();
-    //     // Tiket dengan status open dan in progress di unit kerja dan unit usaha yang sama
-    //     $builder->whereIn('t.status', ['Open', 'In Progress', 'Done']);
-    //     $builder->where('t.id_unit_tujuan', $penempatan->id_unit_kerja);
-    //     $builder->where('t.unit_bisnis_requestor', $penempatan->id_unit_bisnis);
-    //     $builder->where('t.unit_usaha_requestor', $penempatan->id_unit_usaha);
-    //     $builder->groupEnd();
-
-    //     $builder->orGroupStart();
-    //     // Tiket yang sudah closed tapi assigned_to = pegawai ini (yang dikerjakan sendiri)
-    //     $builder->where('t.status', 'Closed');
-    //     $builder->where('t.assigned_to', $idPegawai);
-    //     $builder->groupEnd();
-
-    //     $totalData = $builder->countAllResults(false);
-
-    //     $data = $builder->orderBy('t.created_at', 'DESC')->get()->getResultArray();
-
-    //     // Format tanggal created_at pake Carbon
-    //     foreach ($data as &$ticket) {
-    //         $ticket['created_at'] = Carbon::parse($ticket['created_at'])
-    //             ->locale('id')
-    //             ->isoFormat('D MMMM YYYY HH:mm');
-    //     }
-
-    //     $response = [
-    //         "draw" => (int) $this->request->getGet('draw'),
-    //         "recordsTotal" => $totalData,
-    //         "recordsFiltered" => $totalData,
-    //         "data" => $data,
-    //     ];
-
-    //     return $this->response->setJSON($response);
-    // }
-
-
-    // Staff/kepala unit ambil tiket dan update status serta komentar penyelesaian
     public function takeTicket()
     {
         $session = session();
         $idPegawai = $session->get('id_pegawai');
         $idTiket = $this->request->getPost('id_tiket');
-        $status = $this->request->getPost('status') ?? 'In Progress';
-        $komentar = $this->request->getPost('komentar_penyelesaian') ?? null;
+        $status = $this->request->getPost('status') ?? 'In Progress'; // ambil status dari inputan
+        $komentarPenyelesaian = $this->request->getPost('komentar_penyelesaian') ?? null;
+        $prioritas = $this->request->getPost('prioritas') ?? null;
+        $komentarStaff = $this->request->getPost('komentar_staff') ?? null;
 
         $ticket = $this->ticketModel->find($idTiket);
         if (!$ticket) {
@@ -353,15 +313,43 @@ class Tickets extends Controller
             return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket sudah diambil oleh orang lain']);
         }
 
-        $this->ticketModel->update($idTiket, [
+        // Validasi komentar_staff wajib jika status = Done
+        if ($status === 'Done' && (empty($komentarStaff) || trim($komentarStaff) === '')) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Komentar staff wajib diisi jika status tiket Done']);
+        }
+
+        $updateData = [
             'assigned_to' => $idPegawai,
-            'status' => $status,
-            'komentar_penyelesaian' => $komentar,
+            'status' => $status, // langsung set status sesuai pilihan dropdown
+            'komentar_penyelesaian' => $komentarPenyelesaian,
+            'komentar_staff' => $komentarStaff,
             'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+        ];
+
+        if (in_array($prioritas, ['High', 'Medium', 'Low'])) {
+            $updateData['prioritas'] = $prioritas;
+        }
+
+        $this->ticketModel->update($idTiket, $updateData);
+
+        // Ambil data requestor untuk email
+        $requestor = $this->db->table('user')
+            ->select('email, nama')
+            ->where('id_pegawai', $ticket['id_pegawai_requestor'])
+            ->get()->getRow();
+
+        if ($requestor) {
+            $subject = "Tiket Anda Sedang Dalam Proses";
+            $message = "Halo {$requestor->nama},\n\nTiket dengan judul \"{$ticket['judul']}\" telah diambil dan sedang dalam proses pengerjaan.";
+            $this->sendEmailToRequestor($requestor->email, $ticket, $subject, $message);
+        }
 
         return $this->response->setJSON(['status' => 'success', 'message' => 'Tiket berhasil diambil dan diperbarui']);
     }
+
+
+
+
 
     public function finish()
     {
@@ -388,39 +376,121 @@ class Tickets extends Controller
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
+        $requestor = $this->db->table('user')->select('email, nama')->where('id_pegawai', $ticket['id_pegawai_requestor'])->get()->getRow();
+
+        if ($requestor) {
+            $subject = "Tiket Anda Telah Selesai Dikerjakan";
+            $message = "Halo {$requestor->nama},\n\nTiket dengan judul \"{$ticket['judul']}\" telah selesai dikerjakan. Silakan cek dan konfirmasi.";
+            $this->sendEmailToRequestor($requestor->email, $ticket, $subject, $message);
+        }
+
         return $this->response->setJSON(['status' => 'success', 'message' => 'Status tiket berhasil diubah menjadi Done']);
     }
-
 
     public function confirmCompletion()
     {
         $idTiket = $this->request->getPost('id_tiket');
-        $konfirmasi = $this->request->getPost('confirm_by_requestor') ?? 0;
+        $statusKonfirmasi = $this->request->getPost('status'); // Closed / Open
+        $komentar = $this->request->getPost('komentar_penyelesaian') ?? null;
         $ratingTime = $this->request->getPost('rating_time') ?? null;
         $ratingService = $this->request->getPost('rating_service') ?? null;
-        $komentar = $this->request->getPost('komentar_penyelesaian') ?? null;
 
         $ticket = $this->ticketModel->find($idTiket);
         if (!$ticket) {
             return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket tidak ditemukan']);
         }
 
-        if ($ticket['status'] !== 'Done') {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket belum berstatus Done']);
+        if ($statusKonfirmasi === 'Closed') {
+            if ($ticket['status'] !== 'Done') {
+                return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket belum berstatus Done']);
+            }
+
+            if (empty($komentar) || empty($ratingService) || empty($ratingTime)) {
+                return $this->response->setJSON(['status' => 'error', 'message' => 'Komentar, rating service dan rating waktu wajib diisi untuk menyelesaikan tiket']);
+            }
+
+            $updateData = [
+                'status' => 'Closed',
+                'confirm_by_requestor' => 1,
+                'komentar_penyelesaian' => $komentar,
+                'rating_time' => $ratingTime,
+                'rating_service' => $ratingService,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ];
+        } elseif ($statusKonfirmasi === 'Open') {
+            $updateData = [
+                'status' => 'Open',
+                'assigned_to' => null,
+                // 'prioritas' => null,
+                'komentar_staff' => null,
+                'komentar_penyelesaian' => $komentar,
+                'rating_time' => null,
+                'rating_service' => null,
+                'confirm_by_requestor' => 0,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ];
+        } else {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Status tidak valid']);
         }
 
-        // Update data tiket
-        $this->ticketModel->update($idTiket, [
-            'confirm_by_requestor' => 1,
-            'rating_time' => $ratingTime,
-            'rating_service' => $ratingService,
-            'komentar_penyelesaian' => $komentar,
-            'status' => 'Closed',
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+        // Lakukan update dan cek apakah berhasil
+        $result = $this->ticketModel->update($idTiket, $updateData);
+
+        if (!$result) {
+            // Ambil error jika update gagal
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Gagal mengupdate tiket',
+                'debug' => $this->ticketModel->errors()
+            ]);
+        }
 
         return $this->response->setJSON(['status' => 'success', 'message' => 'Konfirmasi berhasil disimpan']);
     }
+
+
+    // public function confirmCompletion()
+    // {
+    //     $idTiket = $this->request->getPost('id_tiket');
+    //     $konfirmasi = $this->request->getPost('confirm_by_requestor') ?? 0;
+    //     $ratingTime = $this->request->getPost('rating_time') ?? null;
+    //     $ratingService = $this->request->getPost('rating_service') ?? null;
+    //     $komentar = $this->request->getPost('komentar_penyelesaian') ?? null;
+
+    //     $ticket = $this->ticketModel->find($idTiket);
+    //     if (!$ticket) {
+    //         return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket tidak ditemukan']);
+    //     }
+
+    //     if ($ticket['status'] !== 'Done') {
+    //         return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket belum berstatus Done']);
+    //     }
+
+    //     // Update data tiket
+    //     $this->ticketModel->update($idTiket, [
+    //         'confirm_by_requestor' => 1,
+    //         'rating_time' => $ratingTime,
+    //         'rating_service' => $ratingService,
+    //         'komentar_penyelesaian' => $komentar,
+    //         'status' => 'Closed',
+    //         'updated_at' => date('Y-m-d H:i:s'),
+    //     ]);
+
+    //     $assignedTo = $ticket['assigned_to'];
+    //     $staff = $this->db->table('user')->select('email, nama')->where('id_pegawai', $assignedTo)->get()->getRow();
+
+    //     if ($staff) {
+    //         $subject = "Tiket Telah Dikonfirmasi oleh Requestor";
+    //         $message = "Halo {$staff->nama},\n\nTiket dengan judul \"{$ticket['judul']}\" telah dikonfirmasi selesai oleh requestor.";
+    //         $this->sendEmailToRequestor($staff->email, $ticket, $subject, $message);
+    //     }
+
+    //     return $this->response->setJSON(['status' => 'success', 'message' => 'Konfirmasi berhasil disimpan']);
+    // }
+
+
+
+
 
 
     public function boardStaffView()
@@ -430,40 +500,97 @@ class Tickets extends Controller
 
     public function detail($id)
     {
-        $ticket = $this->ticketModel
-            ->select('tiket.*, user.nama as assigned_nama, k.nama_kategori, sk.nama_subkategori')
-            ->join('user', 'user.id_pegawai = tiket.assigned_to', 'left')
-            ->join('kategori k', 'tiket.kategori_id = k.id_kategori', 'left')
-            ->join('sub_kategori sk', 'tiket.subkategori_id = sk.id_subkategori', 'left')
-            ->where('id_tiket', $id)
-            ->first();
+        $builder = $this->db->table('tiket t');
+        $builder->select([
+            't.*',
+            't.gambar',
+            'u_assigned.nama as assigned_nama',
+            'p_assigned.telpon1 as assigned_telpon1',
+            'p_assigned.telpon2 as assigned_telpon2',
+            'k.nama_kategori',
+            'sk.nama_subkategori',
+            'r.nm_ruangan',
+            'req.nama as requestor_nama',
+            'req.email as requestor_email',
+            'p_requestor.telpon1 as requestor_telpon1',
+            'p_requestor.telpon2 as requestor_telpon2',
+
+            // Data penempatan requestor dan nama unit lengkap
+            'pp.id_unit_level',
+            'ul.nm_unit_level',
+            'pp.id_unit_bisnis',
+            'ub.nm_unit_bisnis',
+            'pp.id_unit_usaha',
+            'uu.nm_unit_usaha',
+            'pp.id_unit_organisasi',
+            'uo.nm_unit_organisasi',
+            'pp.id_unit_kerja',
+            'uk.nm_unit_kerja',
+            'pp.id_unit_kerja_sub',
+            'uks.nm_unit_kerja_sub',
+            'pp.id_unit_lokasi',
+            'ulok.nm_unit_lokasi',
+        ]);
+        $builder->join('user u_assigned', 'u_assigned.id_pegawai = t.assigned_to', 'left');
+        $builder->join('pegawai p_assigned', 'p_assigned.id_pegawai = t.assigned_to', 'left');
+        $builder->join('kategori k', 't.kategori_id = k.id_kategori', 'left');
+        $builder->join('sub_kategori sk', 't.subkategori_id = sk.id_subkategori', 'left');
+        $builder->join('ruangan r', 't.id_ruangan = r.id_ruangan', 'left');
+        $builder->join('user req', 'req.id_pegawai = t.id_pegawai_requestor', 'left');
+        $builder->join('pegawai p_requestor', 'p_requestor.id_pegawai = t.id_pegawai_requestor', 'left');
+
+        // Join pegawai_penempatan requestor dan unit-unit terkait
+        $builder->join('pegawai_penempatan pp', 'pp.id_pegawai = t.id_pegawai_requestor', 'left');
+        $builder->join('unit_level ul', 'pp.id_unit_level = ul.id_unit_level', 'left');
+        $builder->join('unit_bisnis ub', 'pp.id_unit_bisnis = ub.id_unit_bisnis', 'left');
+        $builder->join('unit_usaha uu', 'pp.id_unit_usaha = uu.id_unit_usaha', 'left');
+        $builder->join('unit_organisasi uo', 'pp.id_unit_organisasi = uo.id_unit_organisasi', 'left');
+        $builder->join('unit_kerja uk', 'pp.id_unit_kerja = uk.id_unit_kerja', 'left');
+        $builder->join('unit_kerja_sub uks', 'pp.id_unit_kerja_sub = uks.id_unit_kerja_sub', 'left');
+        $builder->join('unit_lokasi ulok', 'pp.id_unit_lokasi = ulok.id_unit_lokasi', 'left');
+
+        $builder->where('t.id_tiket', $id);
+        $ticket = $builder->get()->getRowArray();
 
         if (!$ticket) {
             return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket tidak ditemukan']);
         }
 
-        // Mengambil data requestor
-        $requestor = $this->db->table('user')->select('nama, email')->where('id_pegawai', $ticket['id_pegawai_requestor'])->get()->getRow();
-
-        // Menggunakan Carbon untuk format tanggal
         $createdAt = Carbon::parse($ticket['created_at'])->locale('id')->isoFormat('D MMMM YYYY, HH:mm');
 
         $data = [
             'id_tiket' => $ticket['id_tiket'],
             'judul' => $ticket['judul'],
+            'gambar' => $ticket['gambar'],
             'deskripsi' => $ticket['deskripsi'],
             'prioritas' => $ticket['prioritas'],
             'status' => $ticket['status'],
-            'requestor_nama' => $requestor ? $requestor->nama : '-',
-            'requestor_email' => $requestor ? $requestor->email : '-',
+            'requestor_nama' => $ticket['requestor_nama'] ?? '-',
+            'requestor_email' => $ticket['requestor_email'] ?? '-',
+            'requestor_telpon1' => $ticket['requestor_telpon1'] ?? '-',
+            'requestor_telpon2' => $ticket['requestor_telpon2'] ?? '-',
             'assigned_nama' => $ticket['assigned_nama'] ?? '-',
-            'gambar' => $ticket['gambar'],
-            'created_at' => $createdAt,  // Format tanggal
+            'assigned_telpon1' => $ticket['assigned_telpon1'] ?? '-',
+            'assigned_telpon2' => $ticket['assigned_telpon2'] ?? '-',
+            'nm_ruangan' => $ticket['nm_ruangan'] ?? '-',
+            'kategori' => $ticket['nama_kategori'] ?? '-',
+            'subkategori' => $ticket['nama_subkategori'] ?? '-',
             'komentar_penyelesaian' => $ticket['komentar_penyelesaian'] ?? '-',
+            'komentar_staff' => $ticket['komentar_staff'] ?? '-',
             'rating_time' => $ticket['rating_time'] ?? '-',
             'rating_service' => $ticket['rating_service'] ?? '-',
-            'nama_kategori' => $ticket['nama_kategori'] ?? '-',
-            'nama_subkategori' => $ticket['nama_subkategori'] ?? '-',
+
+            'req_penempatan' => [
+                'unit_level' => $ticket['nm_unit_level'] ?? $ticket['id_unit_level'] ?? '-',
+                'unit_bisnis' => $ticket['nm_unit_bisnis'] ?? $ticket['id_unit_bisnis'] ?? '-',
+                'unit_usaha' => $ticket['nm_unit_usaha'] ?? $ticket['id_unit_usaha'] ?? '-',
+                'unit_organisasi' => $ticket['nm_unit_organisasi'] ?? $ticket['id_unit_organisasi'] ?? '-',
+                'unit_kerja' => $ticket['nm_unit_kerja'] ?? $ticket['id_unit_kerja'] ?? '-',
+                'unit_kerja_sub' => $ticket['nm_unit_kerja_sub'] ?? $ticket['id_unit_kerja_sub'] ?? '-',
+                'unit_lokasi' => $ticket['nm_unit_lokasi'] ?? $ticket['id_unit_lokasi'] ?? '-',
+            ],
+
+            'created_at' => $createdAt,
         ];
 
         return $this->response->setJSON(['status' => 'success', 'data' => $data]);

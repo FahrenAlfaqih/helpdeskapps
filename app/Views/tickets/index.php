@@ -53,10 +53,16 @@
 
         <form id="confirmCompletionForm">
             <input type="hidden" name="id_tiket" id="confirm_id_tiket" />
-
+            <label for="status" class="block font-semibold mb-1">Status Penyelesaian</label>
+            <select id="status" name="status" required class="w-full border rounded px-3 py-2 mb-4">
+                <option value="Open">Belum Selesai</option>
+                <option value="Closed">Sudah Selesai</option>
+            </select>
             <label for="komentar_penyelesaian" class="block font-semibold mb-1">Komentar Penyelesaian</label>
             <textarea id="komentar_penyelesaian" name="komentar_penyelesaian" rows="4" required
                 class="w-full border rounded px-3 py-2 mb-4"></textarea>
+
+
 
             <div class="mb-4">
                 <label class="block font-semibold mb-1">Rating Service</label>
@@ -88,6 +94,8 @@
         </form>
     </div>
 </div>
+
+
 
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -154,53 +162,76 @@
                 if (response.status === 'success') {
                     const data = response.data;
                     let imgHtml = data.gambar ?
-                        `<img src="<?= base_url('uploads/') ?>${encodeURIComponent(data.gambar)}" alt="Gambar Tiket" class="w-full h-64 object-cover rounded-t-lg">` :
+                        `<img src="<?= base_url('uploads/') ?>${encodeURIComponent(data.gambar)}" alt="Gambar Tiket" class="w-full h-64 object-cover rounded-lg mb-6 border border-gray-300">` :
                         '<p class="italic text-gray-500">Tidak ada gambar.</p>';
 
                     let html = `
-                <div class="space-y-6">
-                    <!-- Gambar tiket -->
-                    <div class="w-full mb-4">
-                        ${imgHtml}
-                    </div>
+<div class="space-y-6 text-gray-800 text-sm">
 
-                    <!-- Informasi tiket -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Kiri -->
-                        <div class="space-y-2">
-                            <p><span class="font-semibold">Judul:</span> ${data.judul}</p>
-                            <p><span class="font-semibold">Deskripsi:</span> ${data.deskripsi}</p>
-                            <p><span class="font-semibold">Kategori:</span> ${data.nama_kategori || '-'}</p>
-                            <p><span class="font-semibold">Sub Kategori:</span> ${data.nama_subkategori || '-'}</p>
-                        </div>
-                        <!-- Kanan -->
-                        <div class="space-y-2">
-                            <p><span class="font-semibold">Prioritas:</span> <span class="text-${data.prioritas.toLowerCase()}-600">${data.prioritas}</span></p>
-                            <p><span class="font-semibold">Status:</span> <span class="px-2 py-1 rounded bg-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-100 text-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-600 text-xs font-semibold">${data.status}</span></p>
-                        </div>
-                    </div>
+    ${imgHtml}
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="space-y-2">
-                            <p><span class="font-semibold">Dibuat oleh:</span> ${data.requestor_nama} (${data.requestor_email})</p>
-                            <p><span class="font-semibold">Tanggal Dibuat:</span> ${data.created_at}</p>
-                        </div>
-                        <div class="space-y-2">
-                            <p><span class="font-semibold">Ditugaskan kepada:</span> ${data.assigned_nama || 'Tidak ditugaskan'}</p>
-                        </div>
-                    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-                    <hr class="my-3" />
+            <div>
+            <h4 class="font-semibold mb-2 text-blue-900">Informasi Requestor & Penempatan</h4>
+            <p><span class="font-semibold">Dibuat oleh:</span> ${data.requestor_nama}</p>
+            <p><span class="font-semibold">Telepon 1:</span> ${data.requestor_telpon1 || '-'}</p>
+            <p><span class="font-semibold">Telepon 2:</span> ${data.requestor_telpon2 || '-'}</p>
+            <p><span class="font-semibold">Email:</span> ${data.requestor_email || '-'}</p>
+            <p><span class="font-semibold mt-4 block">Penempatan:</span></p>
+            <ul class="list-disc list-inside ml-5 space-y-0.5 text-sm">
+                <li><strong>Level:</strong> ${data.req_penempatan.unit_level}</li>
+                <li><strong>Bisnis:</strong> ${data.req_penempatan.unit_bisnis}</li>
+                <li><strong>Usaha:</strong> ${data.req_penempatan.unit_usaha}</li>
+                <li><strong>Organisasi:</strong> ${data.req_penempatan.unit_organisasi}</li>
+                <li><strong>Kerja:</strong> ${data.req_penempatan.unit_kerja}</li>
+                <li><strong>Kerja Sub:</strong> ${data.req_penempatan.unit_kerja_sub}</li>
+                <li><strong>Lokasi:</strong> ${data.req_penempatan.unit_lokasi}</li>
+            </ul>
+        </div>
+  <div>
+    <h4 class="font-semibold mb-2 text-blue-900">Informasi Tiket</h4>
+    <p><span class="font-semibold">Judul:</span> ${data.judul}</p>
 
-                    <!-- Komentar Penyelesaian dan Rating -->
-                    <div class="space-y-3">
-                        <h4 class="font-semibold text-lg text-blue-900">Komentar Penyelesaian:</h4>
-                        <p class="italic text-gray-600">${data.komentar_penyelesaian || 'Tidak ada komentar.'}</p>
-                        <h4 class="font-semibold text-lg text-blue-900">Rating:</h4>
-                        <p><span class="font-semibold">Waktu:</span> ${data.rating_time ? ratingTimeText(data.rating_time) : '-'}</p>
-                        <p><span class="font-semibold">Layanan:</span> ${data.rating_service ? ratingServiceText(data.rating_service) : '-'}</p>
-                    </div>
-                </div>
+    <p><span class="font-semibold">Deskripsi:</span></p>
+    <div class="prose max-w-none text-gray-800">${data.deskripsi}</div>
+
+    <p><span class="font-semibold">Prioritas:</span> <span class="text-${data.prioritas.toLowerCase()}-600 font-semibold">${data.prioritas}</span></p>
+    <p><span class="font-semibold">Status:</span> <span class="inline-block px-2 py-1 rounded bg-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-100 text-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-600 text-xs font-semibold">${data.status}</span></p>
+  </div>
+
+
+
+    </div>
+
+    <hr class="border-gray-300 my-6">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+        <div>
+            <h4 class="font-semibold mb-2 text-blue-900">Penugasan</h4>
+            <p><span class="font-semibold">Ditugaskan kepada:</span> ${data.assigned_nama || 'Tidak ditugaskan'}</p>
+            <p><span class="font-semibold">Telepon 1:</span> ${data.assigned_telpon1 || '-'}</p>
+            <p><span class="font-semibold">Telepon 2:</span> ${data.assigned_telpon2 || '-'}</p>
+            <p><span class="font-semibold">Ruangan:</span> ${data.nm_ruangan}</p>
+        </div>
+
+        <div>
+            <h4 class="font-semibold mb-2 text-blue-900">Komentar & Rating</h4>
+            <p><strong>Komentar Penyelesaian:</strong></p>
+            <p class="italic text-gray-600 mb-3">${data.komentar_penyelesaian || 'Tidak ada komentar.'}</p>
+
+            <p><strong>Komentar Staff:</strong></p>
+            <p class="italic text-gray-600 mb-3">${data.komentar_staff || 'Tidak ada komentar dari staff.'}</p>
+
+            <p><strong>Rating Waktu:</strong> ${data.rating_time ? ratingTimeText(data.rating_time) : '-'}</p>
+            <p><strong>Rating Layanan:</strong> ${data.rating_service ? ratingServiceText(data.rating_service) : '-'}</p>
+        </div>
+
+    </div>
+
+    <p class="text-right text-xs text-gray-500 mt-6">Dibuat pada: ${data.created_at}</p>
+</div>
             `;
 
                     $('#ticketDetails').html(html);
@@ -216,13 +247,13 @@
         });
 
 
+
         // Tutup modal
         $('#closeModal').on('click', function() {
             $('#ticketDetailModal').addClass('hidden');
             $('#ticketDetails').html('');
         });
 
-        // Fungsi bantu (kalau belum ada, tambahin aja! Atau ganti sesuai logika lo)
         function ratingTimeText(rating) {
             switch (parseInt(rating)) {
                 case 1:
@@ -257,8 +288,17 @@
             }
         }
 
+        $('#status').on('change', function() {
+            const selected = $(this).val();
+            if (selected === 'Closed') {
+                $('#rating_service').prop('required', true).closest('.mb-4').show();
+                $('#rating_time').prop('required', true).closest('.mb-6').show();
+            } else {
+                $('#rating_service').prop('required', false).val('').closest('.mb-4').hide();
+                $('#rating_time').prop('required', false).val('').closest('.mb-6').hide();
+            }
+        });
 
-        // Saat tombol konfirmasi diklik, buka modal dan isi id tiket
         $('#ticketsTable tbody').on('click', '.confirm-btn', function(e) {
             e.preventDefault();
             const id = $(this).data('id');
@@ -266,21 +306,14 @@
             $('#komentar_penyelesaian').val('');
             $('#rating_service').val('');
             $('#rating_time').val('');
+            $('#status').val('Open').trigger('change');
             $('#confirmCompletionModal').removeClass('hidden');
         });
 
-        // Close modal konfirmasi
         $('#closeConfirmModal').on('click', function() {
             $('#confirmCompletionModal').addClass('hidden');
         });
 
-        // Close modal detail
-        $('#closeModal').on('click', function() {
-            $('#ticketDetailModal').addClass('hidden');
-            $('#ticketDetails').html('');
-        });
-
-        // Submit form konfirmasi
         $('#confirmCompletionForm').on('submit', function(e) {
             e.preventDefault();
 

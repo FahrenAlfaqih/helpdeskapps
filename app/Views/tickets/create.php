@@ -27,7 +27,7 @@
             </div>
 
             <!-- Prioritas -->
-            <div>
+            <!-- <div>
                 <label for="prioritas" class="block font-semibold mb-1">Prioritas</label>
                 <select id="prioritas" name="prioritas" required
                     class="w-full border rounded px-3 py-2">
@@ -35,6 +35,17 @@
                     <option value="High">High</option>
                     <option value="Medium" selected>Medium</option>
                     <option value="Low">Low</option>
+                </select>
+            </div> -->
+
+            <!-- Pilih Ruangan -->
+            <div>
+                <label for="id_ruangan" class="block font-semibold mb-1">Ruangan</label>
+                <select id="id_ruangan" name="id_ruangan" class="w-full border rounded px-3 py-2">
+                    <option value="">-- Pilih Ruangan --</option>
+                    <?php foreach ($ruangan as $r): ?>
+                        <option value="<?= esc($r['id_ruangan']) ?>"><?= esc($r['nm_ruangan']) ?></option>
+                    <?php endforeach; ?>
                 </select>
             </div>
 
@@ -91,8 +102,9 @@
         <!-- Deskripsi -->
         <div>
             <label for="deskripsi" class="block font-semibold mb-1">Deskripsi</label>
-            <textarea id="deskripsi" name="deskripsi" rows="5" required
-                class="w-full border rounded px-3 py-2"></textarea>
+            <div id="editor" style="height: 300px; font-size: 16px; line-height: 1.6; background: white;"></div>
+            <!-- hidden textarea supaya bisa submit ke server -->
+            <textarea name="deskripsi" id="deskripsi" hidden></textarea>
         </div>
 
         <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-200">
@@ -103,8 +115,30 @@
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
 
 <script>
+    var quill = new Quill('#editor', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline'],
+                [{
+                    'list': 'ordered'
+                }, {
+                    'list': 'bullet'
+                }],
+                ['clean']
+            ]
+        }
+    });
+
+    // Saat form submit, isi konten Quill ke textarea
+    document.getElementById('createTicketForm').addEventListener('submit', function() {
+        document.getElementById('deskripsi').value = quill.root.innerHTML;
+    });
+
     $('#kategori').on('change', function() {
         var kategoriId = $(this).val();
         $('#subkategori option').each(function() {
@@ -119,7 +153,7 @@
         });
         $('#subkategori').val(''); // reset pilihan subkategori saat kategori berubah
     });
-    
+
     $('#createTicketForm').on('submit', function(e) {
         e.preventDefault();
 
