@@ -318,6 +318,7 @@ class Tickets extends Controller
             return $this->response->setJSON(['status' => 'error', 'message' => 'Komentar staff wajib diisi jika status tiket Done']);
         }
 
+        // Update data tiket
         $updateData = [
             'assigned_to' => $idPegawai,
             'status' => $status, // langsung set status sesuai pilihan dropdown
@@ -339,16 +340,21 @@ class Tickets extends Controller
             ->get()->getRow();
 
         if ($requestor) {
-            $subject = "Tiket Anda Sedang Dalam Proses";
-            $message = "Halo {$requestor->nama},\n\nTiket dengan judul \"{$ticket['judul']}\" telah diambil dan sedang dalam proses pengerjaan.";
+            // Tentukan subject dan pesan email berdasarkan status
+            if ($status === 'In Progress') {
+                $subject = "Tiket Anda Sedang Dalam Proses";
+                $message = "Halo {$requestor->nama},\n\nTiket dengan judul \"{$ticket['judul']}\" telah diambil dan sedang dalam proses pengerjaan.";
+            } elseif ($status === 'Done') {
+                $subject = "Tiket Anda Telah Selesai Dikerjakan";
+                $message = "Halo {$requestor->nama},\n\nTiket dengan judul \"{$ticket['judul']}\" telah selesai dikerjakan. Silakan cek dan konfirmasi.";
+            }
+
+            // Kirim email sesuai status
             $this->sendEmailToRequestor($requestor->email, $ticket, $subject, $message);
         }
 
         return $this->response->setJSON(['status' => 'success', 'message' => 'Tiket berhasil diambil dan diperbarui']);
     }
-
-
-
 
 
     public function finish()

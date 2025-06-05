@@ -93,7 +93,7 @@
 
 <?php else: 
 ?>
-  <p>Dashboard untuk role ini belum tersedia.</p>
+  <p>Dashboard  belum tersedia.</p>
 <?php endif; ?>
 
 <?= $this->endSection() ?>

@@ -92,6 +92,12 @@
                 Kirim Konfirmasi
             </button>
         </form>
+
+        <!-- Loading Spinner -->
+        <div id="loading" class="hidden fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50">
+            <div class="animate-spin rounded-full border-t-4 border-blue-600 h-16 w-16 mb-4"></div>
+            <p class="text-white">Sedang memproses...</p>
+        </div>
     </div>
 </div>
 
@@ -316,11 +322,12 @@
 
         $('#confirmCompletionForm').on('submit', function(e) {
             e.preventDefault();
-
+            $('#loading').removeClass('hidden');
             const formData = $(this).serialize();
 
             $.post("<?= base_url('tickets/confirm') ?>", formData, function(res) {
                 if (res.status === 'success') {
+                    $('#loading').addClass('hidden');
                     Swal.fire({
                         icon: 'success',
                         title: 'Berhasil',
@@ -331,6 +338,7 @@
                     $('#confirmCompletionModal').addClass('hidden');
                     $('#ticketsTable').DataTable().ajax.reload();
                 } else {
+                    $('#loading').addClass('hidden');
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal',

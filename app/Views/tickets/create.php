@@ -112,10 +112,18 @@
         </button>
     </form>
 
+    <!-- Loading Spinner -->
+    <div id="loading" class="hidden fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="animate-spin rounded-full border-t-4 border-blue-600 h-16 w-16 mb-4"></div>
+        <p class="text-white">Sedang memproses...</p>
+    </div>
+
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 
 
 <script>
@@ -157,6 +165,8 @@
     $('#createTicketForm').on('submit', function(e) {
         e.preventDefault();
 
+        $('#loading').removeClass('hidden');
+
         var formData = new FormData(this);
 
         $.ajax({
@@ -166,14 +176,26 @@
             processData: false,
             contentType: false,
             success: function(res) {
+                $('#loading').addClass('hidden');
                 if (res.status === 'success' || !res.status) {
-                    alert('Tiket berhasil dibuat');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: res.message || 'Tiket berhasil dibuat',
+                        timer: 2000,
+                        showConfirmButton: false,
+                    });
                     window.location.href = "<?= base_url('tickets') ?>";
                 } else {
-                    alert(res.message || 'Terjadi kesalahan');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: res.message || 'Gagal membuat tiket',
+                    });
                 }
             },
             error: function(xhr) {
+                $('#loading').addClass('hidden');
                 let errors = xhr.responseJSON?.errors || {};
                 let message = Object.values(errors).flat().join('\n');
                 alert('Error:\n' + message);

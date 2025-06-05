@@ -70,6 +70,11 @@
                 <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition duration-200">Ambil Tiket</button>
             </div>
         </form>
+
+        <div id="loading" class="hidden fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50">
+            <div class="animate-spin rounded-full border-t-4 border-blue-600 h-16 w-16 mb-4"></div>
+            <p class="text-white">Sedang memproses...</p>
+        </div>
     </div>
 </div>
 
@@ -211,6 +216,7 @@
 
             $form.on('submit', function(e) {
                 e.preventDefault();
+                $('#loading').removeClass('hidden');
 
                 const status = $('#status').val();
                 const komentar = $('#komentar_staff').val().trim();
@@ -228,6 +234,7 @@
                 const formData = $(this).serialize();
 
                 $.post("<?= base_url('tickets/take') ?>", formData, function(response) {
+                    $('#loading').addClass('hidden');
                     Swal.fire({
                         icon: response.status === 'success' ? 'success' : 'error',
                         title: response.status === 'success' ? 'Berhasil!' : 'Gagal!',
@@ -240,6 +247,7 @@
                         loadTickets(currentStatus);
                     }
                 }, 'json').fail(function(xhr) {
+                    $('#loading').addClass('hidden');
                     Swal.fire('Error', 'Terjadi kesalahan saat mengambil tiket', 'error');
                 });
             });
