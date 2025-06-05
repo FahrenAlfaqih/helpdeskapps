@@ -29,9 +29,8 @@
     <div id="noTicketsMessage" class="hidden text-center text-gray-500 mt-4">Tidak ada tiket untuk status ini.</div>
 </div>
 
-<!-- Modal Detail Tiket -->
 <div id="ticketDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] overflow-y-auto relative">
+    <div class="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
         <button id="closeModal" class="absolute top-3 right-3 text-gray-600 hover:text-gray-900 text-3xl font-bold leading-none">&times;</button>
         <h3 class="text-2xl font-semibold mb-4 text-blue-900 select-none px-6 pt-6">Detail Tiket</h3>
         <div id="ticketDetails" class="px-6 pb-6 text-gray-800 text-sm space-y-4">
@@ -254,8 +253,6 @@
         });
 
 
-
-
         // Event selesai tiket
         $ticketsContainer.on('click', '.finish-ticket-btn', function() {
             const idTiket = $(this).data('id');
@@ -302,69 +299,67 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-            <div>
-            <h4 class="font-semibold mb-2 text-blue-900">Informasi Requestor & Penempatan</h4>
-            <p><span class="font-semibold">Dibuat oleh:</span> ${data.requestor_nama}</p>
-            <p><span class="font-semibold">Telepon 1:</span> ${data.requestor_telpon1 || '-'}</p>
-            <p><span class="font-semibold">Telepon 2:</span> ${data.requestor_telpon2 || '-'}</p>
-            <p><span class="font-semibold">Email:</span> ${data.requestor_email || '-'}</p>
-            <p><span class="font-semibold mt-4 block">Penempatan:</span></p>
-            <ul class="list-disc list-inside ml-5 space-y-0.5 text-sm">
-                <li><strong>Level:</strong> ${data.req_penempatan.unit_level}</li>
-                <li><strong>Bisnis:</strong> ${data.req_penempatan.unit_bisnis}</li>
-                <li><strong>Usaha:</strong> ${data.req_penempatan.unit_usaha}</li>
-                <li><strong>Organisasi:</strong> ${data.req_penempatan.unit_organisasi}</li>
-                <li><strong>Kerja:</strong> ${data.req_penempatan.unit_kerja}</li>
-                <li><strong>Kerja Sub:</strong> ${data.req_penempatan.unit_kerja_sub}</li>
-                <li><strong>Lokasi:</strong> ${data.req_penempatan.unit_lokasi}</li>
-            </ul>
-        </div>
+        <div>
+        <h4 class="font-semibold mb-2 text-blue-900">Informasi Requestor & Penempatan</h4>
+        <p><span class="font-semibold">Dibuat oleh:</span> ${data.requestor_nama}</p>
+        <p><span class="font-semibold">Telepon 1:</span> ${data.requestor_telpon1 || '-'}</p>
+        <p><span class="font-semibold">Telepon 2:</span> ${data.requestor_telpon2 || '-'}</p>
+        <p><span class="font-semibold">Email:</span> ${data.requestor_email || '-'}</p>
+        <p><span class="font-semibold mt-4 block">Penempatan:</span></p>
+        <ul class="list-disc list-inside ml-5 space-y-0.5 text-sm">
+            <li><strong>Level:</strong> ${data.req_penempatan.unit_level}</li>
+            <li><strong>Bisnis:</strong> ${data.req_penempatan.unit_bisnis}</li>
+            <li><strong>Usaha:</strong> ${data.req_penempatan.unit_usaha}</li>
+            <li><strong>Organisasi:</strong> ${data.req_penempatan.unit_organisasi}</li>
+            <li><strong>Kerja:</strong> ${data.req_penempatan.unit_kerja}</li>
+            <li><strong>Kerja Sub:</strong> ${data.req_penempatan.unit_kerja_sub}</li>
+            <li><strong>Lokasi:</strong> ${data.req_penempatan.unit_lokasi}</li>
+        </ul>
+    </div>
+
   <div>
     <h4 class="font-semibold mb-2 text-blue-900">Informasi Tiket</h4>
     <p><span class="font-semibold">Judul:</span> ${data.judul}</p>
-
     <p><span class="font-semibold">Deskripsi:</span></p>
     <div class="prose max-w-none text-gray-800">${data.deskripsi}</div>
 
     <p><span class="font-semibold">Prioritas:</span> <span class="text-${data.prioritas.toLowerCase()}-600 font-semibold">${data.prioritas}</span></p>
     <p><span class="font-semibold">Status:</span> <span class="inline-block px-2 py-1 rounded bg-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-100 text-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-600 text-xs font-semibold">${data.status}</span></p>
+    <p><span class="font-semibold">Waktu Pengerjaan:</span> ${data.updated_at}</p> <!-- Add the updated_at here -->
   </div>
 
-    </div>
-
-    <hr class="border-gray-300 my-6">
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-        <div>
-            <h4 class="font-semibold mb-2 text-blue-900">Penugasan</h4>
-            <p><span class="font-semibold">Ditugaskan kepada:</span> ${data.assigned_nama || 'Tidak ditugaskan'}</p>
-            <p><span class="font-semibold">Telepon 1:</span> ${data.assigned_telpon1 || '-'}</p>
-            <p><span class="font-semibold">Telepon 2:</span> ${data.assigned_telpon2 || '-'}</p>
-            <p><span class="font-semibold">Ruangan:</span> ${data.nm_ruangan}</p>
-        </div>
-
-        <div>
-            <h4 class="font-semibold mb-2 text-blue-900">Komentar & Rating</h4>
-            <p><strong>Komentar Penyelesaian:</strong></p>
-            <p class="italic text-gray-600 mb-3">${data.komentar_penyelesaian || 'Tidak ada komentar.'}</p>
-
-            <p><strong>Komentar Staff:</strong></p>
-            <p class="italic text-gray-600 mb-3">${data.komentar_staff || 'Tidak ada komentar dari staff.'}</p>
-
-            <p><strong>Rating Waktu:</strong> ${data.rating_time ? ratingTimeText(data.rating_time) : '-'}</p>
-            <p><strong>Rating Layanan:</strong> ${data.rating_service ? ratingServiceText(data.rating_service) : '-'}</p>
-        </div>
-
-    </div>
-
-    <p class="text-right text-xs text-gray-500 mt-6">Dibuat pada: ${data.created_at}</p>
 </div>
-            `;
+<hr class="border-gray-300 my-6">
 
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div>
+        <h4 class="font-semibold mb-2 text-blue-900">Penugasan</h4>
+        <p><span class="font-semibold">Ditugaskan kepada:</span> ${data.assigned_nama || 'Tidak ditugaskan'}</p>
+        <p><span class="font-semibold">Telepon 1:</span> ${data.assigned_telpon1 || '-'}</p>
+        <p><span class="font-semibold">Telepon 2:</span> ${data.assigned_telpon2 || '-'}</p>
+        <p><span class="font-semibold">Ruangan:</span> ${data.nm_ruangan}</p>
+    </div>
 
-                    $('#ticketDetails').html(html);
-                    $('#ticketDetailModal').removeClass('hidden');
+    <div>
+        <h4 class="font-semibold mb-2 text-blue-900">Komentar & Rating</h4>
+        <p><strong>Komentar Penyelesaian:</strong></p>
+        <p class="italic text-gray-600 mb-3">${data.komentar_penyelesaian || 'Tidak ada komentar.'}</p>
+
+        <p><strong>Komentar Staff:</strong></p>
+        <p class="italic text-gray-600 mb-3">${data.komentar_staff || 'Tidak ada komentar dari staff.'}</p>
+
+        <p><strong>Rating Waktu:</strong> ${data.rating_time ? ratingTimeText(data.rating_time) : '-'}</p>
+        <p><strong>Rating Layanan:</strong> ${data.rating_service ? ratingServiceText(data.rating_service) : '-'}</p>
+    </div>
+</div>
+
+<p class="text-right text-xs text-gray-500 mt-6">Dibuat pada: ${data.created_at}</p>
+</div>
+`;
+
+$('#ticketDetails').html(html);
+$('#ticketDetailModal').removeClass('hidden');
+
                 } else {
                     Swal.fire({
                         icon: 'error',

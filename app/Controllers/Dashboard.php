@@ -1,8 +1,9 @@
-<?php namespace App\Controllers;
+<?php
+
+namespace App\Controllers;
 
 use App\Models\M_Tiket;
 use CodeIgniter\Controller;
-use App\Models\TicketModel;
 
 class Dashboard extends Controller
 {
@@ -11,49 +12,78 @@ class Dashboard extends Controller
     public function __construct()
     {
         helper(['url', 'session']);
-        $this->ticketModel = new M_Tiket();
+        $this->ticketModel = new M_Tiket(); // Menggunakan model M_Tiket untuk mengakses data tiket
     }
 
     public function index()
     {
         $session = session();
-        $roleId = $session->get('role_id');
         $userId = $session->get('user_id');
+        $idPegawai = $session->get('id_pegawai');
 
-        if (!$roleId) {
-            return redirect('/');
+        if (!$userId) {
+            return redirect('/'); // Redirect jika user tidak login
         }
 
-        $data = ['roleId' => $roleId];
+        // Total Tiket yang Diajukan oleh Requestor
+        $totalTiketUser = $this->ticketModel->where('id_pegawai_requestor', $idPegawai)
+            ->countAllResults(false);
 
-        // Data khusus untuk Requestor (role 6)
-        if ($roleId == 6) {
-            $totalIT = $this->ticketModel->where('requestor_id', $userId)
-                ->where('assigned_unit', 'IT')
-                ->countAllResults(false);
+        // Total Tiket yang Diteruskan ke Unit (Finance dan GA)
+        $totalTiketToUnit = $this->ticketModel->select('id_unit_tujuan, COUNT(*) as total')
+            ->where('id_pegawai_requestor', $idPegawai)
+            ->whereIn('id_unit_tujuan', ['E13', 'E21']) // E13 untuk Finance dan E21 untuk GA
+            ->groupBy('id_unit_tujuan') // Mengelompokkan berdasarkan id_unit_tujuan
+            ->findAll();
 
-            $totalGA = $this->ticketModel->where('requestor_id', $userId)
-                ->where('assigned_unit', 'GA')
-                ->countAllResults(false);
+        // Inisialisasi total tiket untuk Unit Finance (E13) dan Unit GA (E21)
+        $totalTiketToUnitF = 0;
+        $totalTiketToUnitG = 0;
 
-            $statusCounts = $this->ticketModel->select('status, COUNT(*) as total')
-                ->where('requestor_id', $userId)
-                ->groupBy('status')
-                ->findAll();
-
-            $data['totalIT'] = $totalIT;
-            $data['totalGA'] = $totalGA;
-            $data['statusCounts'] = $statusCounts;
+        // Memisahkan hasil berdasarkan id_unit_tujuan
+        foreach ($totalTiketToUnit as $ticket) {
+            if ($ticket['id_unit_tujuan'] == 'E13') {
+                $totalTiketToUnitF += $ticket['total']; // Jumlah tiket untuk Unit Finance
+            } elseif ($ticket['id_unit_tujuan'] == 'E21') {
+                $totalTiketToUnitG += $ticket['total']; // Jumlah tiket untuk Unit GA
+            }
         }
 
-        // Contoh: untuk Admin (role 1), bisa kasih total user atau tiket seluruhnya
-        if ($roleId == 1) {
-            $totalTickets = $this->ticketModel->countAllResults(false);
-            $data['totalTickets'] = $totalTickets;
-            // Bisa tambah data lain sesuai kebutuhan
+        // Status Tiket (Open, In Progress, Closed, Done)
+        $statusCounts = $this->ticketModel->select('status, COUNT(*) as total')
+            ->where('id_pegawai_requestor', $idPegawai)
+            ->groupBy('status')
+            ->findAll();
+
+        // Jika tidak ada data status, set default
+        if (empty($statusCounts)) {
+            $statusCounts = [
+                ['status' => 'Open', 'total' => 0],
+                ['status' => 'In Progress', 'total' => 0],
+                ['status' => 'Closed', 'total' => 0],
+                ['status' => 'Done', 'total' => 0],
+            ];
         }
 
-        // Untuk role lain bisa ditambah kondisional di sini...
+        // Mengurutkan status berdasarkan urutan yang diinginkan
+        $statusOrder = ['Open', 'In Progress', 'Done', 'Closed'];
+        usort($statusCounts, function ($a, $b) use ($statusOrder) {
+            return array_search($a['status'], $statusOrder) - array_search($b['status'], $statusOrder);
+        });
+
+        $totalTiketUnresolved = $this->ticketModel->where('id_pegawai_requestor', $idPegawai)
+            ->whereIn('status', ['Open', 'In Progress'])
+            ->countAllResults(false);
+
+
+        // Mengirim data ke view
+        $data = [
+            'statusCounts' => $statusCounts,
+            'totalTiketUser' => $totalTiketUser,
+            'totalTiketToUnitF' => $totalTiketToUnitF,
+            'totalTiketToUnitG' => $totalTiketToUnitG,
+            'totalTiketUnresolved' => $totalTiketUnresolved,
+        ];
 
         return view('dashboard/index', $data);
     }

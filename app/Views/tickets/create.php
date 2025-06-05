@@ -177,22 +177,16 @@
             contentType: false,
             success: function(res) {
                 $('#loading').addClass('hidden');
-                if (res.status === 'success' || !res.status) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Berhasil',
-                        text: res.message || 'Tiket berhasil dibuat',
-                        timer: 2000,
-                        showConfirmButton: false,
-                    });
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: res.message || 'Tiket berhasil dibuat',
+                    timer: 2000,
+                    showConfirmButton: false,
+                }).then(() => {
+                    // Redirect ke halaman tiket/index setelah Swal ditutup
                     window.location.href = "<?= base_url('tickets') ?>";
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Gagal',
-                        text: res.message || 'Gagal membuat tiket',
-                    });
-                }
+                });
             },
             error: function(xhr) {
                 $('#loading').addClass('hidden');

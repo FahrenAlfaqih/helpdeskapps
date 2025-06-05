@@ -36,7 +36,7 @@
 
 <!-- Modal Detail Tiket -->
 <div id="ticketDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] overflow-y-auto relative">
+    <div class="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
         <button id="closeModal" class="absolute top-3 right-3 text-gray-600 hover:text-gray-900 text-3xl font-bold leading-none">&times;</button>
         <h3 class="text-2xl font-semibold mb-4 text-blue-900 select-none px-6 pt-6">Detail Tiket</h3>
         <div id="ticketDetails" class="px-6 pb-6 text-gray-800 text-sm space-y-4">
@@ -44,6 +44,7 @@
         </div>
     </div>
 </div>
+
 
 <!-- Modal Konfirmasi Penyelesaian -->
 <div id="confirmCompletionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -204,7 +205,9 @@
 
     <p><span class="font-semibold">Prioritas:</span> <span class="text-${data.prioritas.toLowerCase()}-600 font-semibold">${data.prioritas}</span></p>
     <p><span class="font-semibold">Status:</span> <span class="inline-block px-2 py-1 rounded bg-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-100 text-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-600 text-xs font-semibold">${data.status}</span></p>
-  </div>
+      <p><span class="font-semibold">Waktu Penugasan:</span> ${data.updated_at}</p> <!-- Add the updated_at here -->
+
+    </div>
 
 
 
@@ -236,7 +239,7 @@
 
     </div>
 
-    <p class="text-right text-xs text-gray-500 mt-6">Dibuat pada: ${data.created_at}</p>
+    <p class="text-right text-sm text-gray-500 mt-6">Dibuat pada: ${data.created_at}</p>
 </div>
             `;
 

@@ -520,8 +520,6 @@ class Tickets extends Controller
             'req.email as requestor_email',
             'p_requestor.telpon1 as requestor_telpon1',
             'p_requestor.telpon2 as requestor_telpon2',
-
-            // Data penempatan requestor dan nama unit lengkap
             'pp.id_unit_level',
             'ul.nm_unit_level',
             'pp.id_unit_bisnis',
@@ -544,8 +542,6 @@ class Tickets extends Controller
         $builder->join('ruangan r', 't.id_ruangan = r.id_ruangan', 'left');
         $builder->join('user req', 'req.id_pegawai = t.id_pegawai_requestor', 'left');
         $builder->join('pegawai p_requestor', 'p_requestor.id_pegawai = t.id_pegawai_requestor', 'left');
-
-        // Join pegawai_penempatan requestor dan unit-unit terkait
         $builder->join('pegawai_penempatan pp', 'pp.id_pegawai = t.id_pegawai_requestor', 'left');
         $builder->join('unit_level ul', 'pp.id_unit_level = ul.id_unit_level', 'left');
         $builder->join('unit_bisnis ub', 'pp.id_unit_bisnis = ub.id_unit_bisnis', 'left');
@@ -562,7 +558,9 @@ class Tickets extends Controller
             return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket tidak ditemukan']);
         }
 
+        // Format created_at dan updated_at untuk waktu yang lebih mudah dibaca
         $createdAt = Carbon::parse($ticket['created_at'])->locale('id')->isoFormat('D MMMM YYYY, HH:mm');
+        $updatedAt = Carbon::parse($ticket['updated_at'])->locale('id')->isoFormat('D MMMM YYYY, HH:mm');
 
         $data = [
             'id_tiket' => $ticket['id_tiket'],
@@ -597,6 +595,7 @@ class Tickets extends Controller
             ],
 
             'created_at' => $createdAt,
+            'updated_at' => $updatedAt, // Add updated_at for the completion time
         ];
 
         return $this->response->setJSON(['status' => 'success', 'data' => $data]);
