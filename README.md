@@ -1,68 +1,89 @@
-# CodeIgniter 4 Application Starter
+Here’s a more polished and visually appealing **README** for your GitHub project, with added emojis for a modern touch:
 
-## What is CodeIgniter?
+---
 
-CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.
-More information can be found at the [official site](https://codeigniter.com).
+# Integrated Help Desk System | PT Bakti Timah Medika 🏥💻
 
-This repository holds a composer-installable app starter.
-It has been built from the
-[development repository](https://github.com/codeigniter4/CodeIgniter4).
+**PT Bakti Timah Medika** is a healthcare company managing 4 hospitals and 7 clinics across the Bangka Belitung Province. To enhance internal service efficiency and communication, I developed a **web-based Help Desk system** that centralizes and streamlines service requests from all departments, with a particular focus on IT and General Affairs (GA) teams.
 
-More information about the plans for version 4 can be found in [CodeIgniter 4](https://forum.codeigniter.com/forumdisplay.php?fid=28) on the forums.
+## Overview 🚀
 
-You can read the [user guide](https://codeigniter.com/user_guide/)
-corresponding to the latest version of the framework.
+The **Integrated Help Desk System** allows PT Bakti Timah Medika's internal teams to efficiently manage, track, and resolve service requests. By eliminating unstructured communication methods (such as email and WhatsApp), the system provides a structured, ticket-based approach that ensures traceability and accountability. The platform utilizes a **Kanban method** for task management, ensuring seamless workflows and task prioritization.
 
-## Installation & updates
+## Key Features 🔑
 
-`composer create-project codeigniter4/appstarter` then `composer update` whenever
-there is a new release of the framework.
+* **Task Management with Kanban**: Organize service requests using a Kanban board for easy tracking and management of tasks.
+* **Ticket-Based System**: Replaced emails and WhatsApp messages with a structured ticketing system, ensuring every request is traceable and manageable.
+* **Ticket Categorization & Assignment**: Categorized tickets into different service types and assigned them to appropriate teams for faster resolution.
+* **Deadline Management**: Added features to set and track deadlines for tasks, improving task prioritization and on-time resolution.
 
-When updating, check the release notes to see if there are any changes you might need to apply
-to your `app` folder. The affected files can be copied or merged from
-`vendor/codeigniter4/framework/app`.
+## Technologies Used 🛠️
 
-## Setup
+* **Backend**: CodeIgniter 3
+* **Frontend**: AJAX for dynamic and seamless user interaction
+* **Database**: MySQL for structured and secure data management
 
-Copy `env` to `.env` and tailor for your app, specifically the baseURL
-and any database settings.
+## Key Responsibilities 👨‍💻
 
-## Important Change with index.php
+* **System Design & Implementation**: Designed and implemented the task management system using the Kanban method, tailored for service request management.
+* **Backend Development**: Developed the backend using **CodeIgniter 3** and ensured smooth integration with the frontend using **AJAX**.
+* **Feature Development**: Created features for ticket categorization, assignment workflows, and deadline management to enhance task distribution and resolution efficiency.
+* **User Interface**: Optimized the user experience to ensure better navigation and faster issue resolution for IT and GA teams.
 
-`index.php` is no longer in the root of the project! It has been moved inside the *public* folder,
-for better security and separation of components.
+## Screenshots 📸
 
-This means that you should configure your web server to "point" to your project's *public* folder, and
-not to the project root. A better practice would be to configure a virtual host to point there. A poor practice would be to point your web server to the project root and expect to enter *public/...*, as the rest of your logic and the
-framework are exposed.
+### Login as **Requestor Officer Finance & IT**:
 
-**Please** read the user guide for a better explanation of how CI4 works!
+![Officer Login](https://github.com/user-attachments/assets/8f5f9357-213d-4f1f-af03-dd79af15dfe9)
+![Dashboard](https://github.com/user-attachments/assets/937ac88b-53a7-4995-b312-c51e36de7b02)
+![image](https://github.com/user-attachments/assets/0ebba759-d74f-4410-9df6-1e00067282a2)
+![image](https://github.com/user-attachments/assets/f3c64ed5-4ce4-4b87-a2a8-ffc5bd3a8556)
+![image](https://github.com/user-attachments/assets/4e7911e4-ddfa-424b-a61e-4f9d3ce7adef)
 
-## Repository Management
+### Login as **Officer General Affair & Technique**:
 
-We use GitHub issues, in our main repository, to track **BUGS** and to track approved **DEVELOPMENT** work packages.
-We use our [forum](http://forum.codeigniter.com) to provide SUPPORT and to discuss
-FEATURE REQUESTS.
+![image](https://github.com/user-attachments/assets/34dabd6f-0c1d-4324-a65c-c1f43a40306c)
+![image](https://github.com/user-attachments/assets/5bafae31-8076-4838-9154-9286b86971f9)
+![image](https://github.com/user-attachments/assets/32ff1796-9191-419a-b30d-daa3c45a62a7)
+![image](https://github.com/user-attachments/assets/b38d2543-a1a6-4ab2-912e-c74453ef1956)
+![image](https://github.com/user-attachments/assets/7cf4cda8-9b3c-4259-a714-431e36dd87c3)
+![image](https://github.com/user-attachments/assets/43708cb8-a481-43b2-a28b-f02a6454e87a)
 
-This repository is a "distribution" one, built by our release preparation script.
-Problems with it can be raised on our forum, or as issues in the main repository.
+### Confirm Closed the Ticket from Requestor:
 
-## Server Requirements
+![image](https://github.com/user-attachments/assets/bb6347a0-2b92-4644-852d-5c31b7722809)
+![image](https://github.com/user-attachments/assets/c3831d8b-1d8b-4222-92f7-2fee414bb2c2)
 
-PHP version 8.1 or higher is required, with the following extensions installed:
+### When the Ticket Was Confirmed by Requestor, Ticket Status Will Be Closed:
 
-- [intl](http://php.net/manual/en/intl.requirements.php)
-- [mbstring](http://php.net/manual/en/mbstring.installation.php)
+![image](https://github.com/user-attachments/assets/af725c71-a7fd-46f6-a639-0b6c1d07d71c)
+![image](https://github.com/user-attachments/assets/15273721-4e78-4fbc-a31a-a586a32faf9e)
 
-> [!WARNING]
-> - The end of life date for PHP 7.4 was November 28, 2022.
-> - The end of life date for PHP 8.0 was November 26, 2023.
-> - If you are still using PHP 7.4 or 8.0, you should upgrade immediately.
-> - The end of life date for PHP 8.1 will be December 31, 2025.
+### Email Notification to **Requestor**:
 
-Additionally, make sure that the following extensions are enabled in your PHP:
+* When the ticket was taken by Officer:
+  ![image](https://github.com/user-attachments/assets/986c448c-b168-4e22-8c25-ebf7a948acd1)
+* When the ticket was done by Officer:
+  ![image](https://github.com/user-attachments/assets/bd2738cd-e1c2-49ae-bab6-412c4e08e771)
 
-- json (enabled by default - don't turn it off)
-- [mysqlnd](http://php.net/manual/en/mysqlnd.install.php) if you plan to use MySQL
-- [libcurl](http://php.net/manual/en/curl.requirements.php) if you plan to use the HTTP\CURLRequest library
+## How to Run the Project 🚀
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/FahrenAlfaqih/helpdesk-apps.git
+   ```
+
+2. Install dependencies and set up the database.
+
+3. Configure **`config/database.php`** with your MySQL credentials.
+
+4. Run the system on your local server.
+
+## Conclusion 🎯
+
+This **Help Desk System** has significantly improved the efficiency of handling internal service requests at PT Bakti Timah Medika. With robust features such as task categorization, assignment workflows, and deadline management, the system streamlines service request tracking and resolution.
+
+Feel free to **fork** or **contribute** to the project! 🙌
+
+---
