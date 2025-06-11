@@ -1,4 +1,3 @@
-Here’s a more polished and visually appealing **README** for your GitHub project, with added emojis for a modern touch:
 
 ---
 
