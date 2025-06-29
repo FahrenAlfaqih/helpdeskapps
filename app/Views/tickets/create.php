@@ -26,32 +26,19 @@
                     class="w-full border rounded px-3 py-2 bg-gray-100 cursor-not-allowed" />
             </div>
 
-            <!-- Prioritas -->
-            <!-- <div>
-                <label for="prioritas" class="block font-semibold mb-1">Prioritas</label>
-                <select id="prioritas" name="prioritas" required
-                    class="w-full border rounded px-3 py-2">
-                    <option value="">-- Pilih Prioritas --</option>
-                    <option value="High">High</option>
-                    <option value="Medium" selected>Medium</option>
-                    <option value="Low">Low</option>
-                </select>
-            </div> -->
-
-            <!-- Pilih Ruangan -->
+            <!-- Ruangan Otomatis dari Session -->
             <div>
-                <label for="id_ruangan" class="block font-semibold mb-1">Ruangan</label>
-                <select id="id_ruangan" name="id_ruangan" class="w-full border rounded px-3 py-2">
-                    <option value="">-- Pilih Ruangan --</option>
-                    <?php foreach ($ruangan as $r): ?>
-                        <option value="<?= esc($r['id_ruangan']) ?>"><?= esc($r['nm_ruangan']) ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <label for="nm_unit_kerja_sub" class="block font-semibold mb-1">Ruangan</label>
+                <input type="text" id="nm_unit_kerja_sub" name="nm_unit_kerja_sub"
+                    value="<?= esc(session()->get('unit_kerja_sub_name')) ?>" readonly
+                    class="w-full border rounded px-3 py-2 bg-gray-100 cursor-not-allowed" />
+                <input type="hidden" name="id_unit_kerja_sub" value="<?= esc(session()->get('unit_kerja_sub_id')) ?>" />
             </div>
+
 
             <!-- Tujuan Tiket -->
             <div>
-                <label for="id_unit_tujuan" class="block font-semibold mb-1">Tujuan Tiket (Unit Kerja)</label>
+                <label for="id_unit_tujuan" class="block font-semibold mb-1">Tujuan Tiket</label>
                 <select id="id_unit_tujuan" name="id_unit_tujuan" required
                     class="w-full border rounded px-3 py-2">
                     <option value="">-- Pilih Unit Kerja Tujuan --</option>
@@ -76,6 +63,7 @@
                         <option value="<?= esc($kat['id_kategori']) ?>"><?= esc($kat['nama_kategori']) ?></option>
                     <?php endforeach; ?>
                 </select>
+                <input type="hidden" name="id_unit_kerja_sub_tujuan" id="id_unit_kerja_sub_tujuan" />
             </div>
 
             <!-- Pilih Subkategori -->
@@ -149,6 +137,8 @@
 
     $('#kategori').on('change', function() {
         var kategoriId = $(this).val();
+
+        // Tampilkan subkategori yang cocok
         $('#subkategori option').each(function() {
             var $this = $(this);
             if ($this.val() === '') {
@@ -159,8 +149,30 @@
                 $this.hide();
             }
         });
-        $('#subkategori').val(''); // reset pilihan subkategori saat kategori berubah
+        $('#subkategori').val('');
+
+        
+        if (kategoriId) {
+            $.ajax({
+                url: '<?= base_url('api/kategori/penanggung-jawab') ?>/' + kategoriId,
+                method: 'GET',
+                success: function(res) {
+                    let pjs = res.penanggung_jawab || [];
+                    if (pjs.length > 0) {
+                        $('#id_unit_kerja_sub_tujuan').val(pjs[0]); // Pilih yang pertama
+                    } else {
+                        $('#id_unit_kerja_sub_tujuan').val('');
+                    }
+                },
+                error: function() {
+                    $('#id_unit_kerja_sub_tujuan').val('');
+                }
+            });
+        } else {
+            $('#id_unit_kerja_sub_tujuan').val('');
+        }
     });
+
 
     $('#createTicketForm').on('submit', function(e) {
         e.preventDefault();

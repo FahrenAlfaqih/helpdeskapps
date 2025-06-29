@@ -95,11 +95,6 @@
             <?= $uri->getSegment(1) == 'master' && $uri->getSegment(2) == 'subkategori' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
                     Master Sub Kategori
                 </a>
-                <a href="/master/ruangan"
-                    class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
-            <?= $uri->getSegment(1) == 'master' && $uri->getSegment(2) == 'ruangan' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">
-                    Master Ruangan
-                </a>
             <?php endif; ?>
 
             <!-- Spacer agar Logout selalu di bawah -->

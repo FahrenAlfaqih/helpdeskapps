@@ -98,7 +98,6 @@ class Tickets extends Controller
         $session = session();
         $idPegawaiRequestor = $session->get('id_pegawai');
 
-        // Ambil penempatan lengkap requestor
         $penempatan = $this->db->table('pegawai_penempatan as pp')
             ->select('pp.id_unit_level, pp.id_unit_bisnis, pp.id_unit_usaha, pp.id_unit_organisasi, pp.id_unit_kerja, pp.id_unit_kerja_sub, pp.id_unit_lokasi')
             ->where('pp.id_pegawai', $idPegawaiRequestor)
@@ -108,12 +107,10 @@ class Tickets extends Controller
             return redirect()->back()->with('error', 'Data penempatan requestor tidak ditemukan.');
         }
 
-        // Validasi
         $validation = \Config\Services::validation();
         $rules = [
             'judul' => 'required|max_length[255]',
             'deskripsi' => 'required',
-            // 'prioritas' => 'required|in_list[High,Medium,Low]',
             'id_unit_tujuan' => 'required',
             'kategori' => 'required',
             'subkategori' => 'required',
@@ -124,7 +121,6 @@ class Tickets extends Controller
             return redirect()->back()->withInput()->with('errors', $validation->getErrors());
         }
 
-        // Upload gambar jika ada
         $fileName = null;
         if ($file = $this->request->getFile('gambar')) {
             if ($file->isValid() && !$file->hasMoved()) {
@@ -132,6 +128,7 @@ class Tickets extends Controller
                 $file->move(WRITEPATH . 'uploads', $fileName);
             }
         }
+
         $data = [
             'id_tiket' => $this->ticketModel->generateIdTiket(),
             'id_pegawai_requestor' => $idPegawaiRequestor,
@@ -145,9 +142,10 @@ class Tickets extends Controller
             'judul' => $this->request->getPost('judul'),
             'deskripsi' => $this->request->getPost('deskripsi'),
             'id_unit_tujuan' => $this->request->getPost('id_unit_tujuan'),
+            'id_unit_kerja_sub_tujuan' => $this->request->getPost('id_unit_kerja_sub_tujuan'),
             'kategori_id' => $this->request->getPost('kategori'),
             'subkategori_id' => $this->request->getPost('subkategori'),
-            'id_ruangan' => $this->request->getPost('id_ruangan'),
+            'id_ruangan' => $penempatan->id_unit_kerja_sub,
             'prioritas' => 'Low',
             'komentar_staff' => null,
             'gambar' => $fileName,
@@ -453,49 +451,6 @@ class Tickets extends Controller
 
         return $this->response->setJSON(['status' => 'success', 'message' => 'Konfirmasi berhasil disimpan']);
     }
-
-
-    // public function confirmCompletion()
-    // {
-    //     $idTiket = $this->request->getPost('id_tiket');
-    //     $konfirmasi = $this->request->getPost('confirm_by_requestor') ?? 0;
-    //     $ratingTime = $this->request->getPost('rating_time') ?? null;
-    //     $ratingService = $this->request->getPost('rating_service') ?? null;
-    //     $komentar = $this->request->getPost('komentar_penyelesaian') ?? null;
-
-    //     $ticket = $this->ticketModel->find($idTiket);
-    //     if (!$ticket) {
-    //         return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket tidak ditemukan']);
-    //     }
-
-    //     if ($ticket['status'] !== 'Done') {
-    //         return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket belum berstatus Done']);
-    //     }
-
-    //     // Update data tiket
-    //     $this->ticketModel->update($idTiket, [
-    //         'confirm_by_requestor' => 1,
-    //         'rating_time' => $ratingTime,
-    //         'rating_service' => $ratingService,
-    //         'komentar_penyelesaian' => $komentar,
-    //         'status' => 'Closed',
-    //         'updated_at' => date('Y-m-d H:i:s'),
-    //     ]);
-
-    //     $assignedTo = $ticket['assigned_to'];
-    //     $staff = $this->db->table('user')->select('email, nama')->where('id_pegawai', $assignedTo)->get()->getRow();
-
-    //     if ($staff) {
-    //         $subject = "Tiket Telah Dikonfirmasi oleh Requestor";
-    //         $message = "Halo {$staff->nama},\n\nTiket dengan judul \"{$ticket['judul']}\" telah dikonfirmasi selesai oleh requestor.";
-    //         $this->sendEmailToRequestor($staff->email, $ticket, $subject, $message);
-    //     }
-
-    //     return $this->response->setJSON(['status' => 'success', 'message' => 'Konfirmasi berhasil disimpan']);
-    // }
-
-
-
 
 
 

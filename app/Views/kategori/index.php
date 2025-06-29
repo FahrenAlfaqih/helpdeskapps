@@ -14,6 +14,7 @@
             <thead class="bg-blue-100">
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">Nama Kategori</th>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-blue-700 uppercase tracking-wider">Penanggung Jawab</th>
                     <th class="px-6 py-3 text-center text-xs font-semibold text-blue-700 uppercase tracking-wider">Aksi</th>
                 </tr>
             </thead>
@@ -21,6 +22,24 @@
                 <?php foreach ($kategori as $kat): ?>
                     <tr>
                         <td class="px-6 py-3"><?= esc($kat['nama_kategori']) ?></td>
+
+
+                        <td class="px-6 py-3">
+                            <?php
+                            $pjs = json_decode($kat['penanggung_jawab'] ?? '[]');
+                            if (!empty($pjs)) {
+                                $namaPJ = array_map(function ($id) use ($mapUnitKerjaSub) {
+                                    $nama = $mapUnitKerjaSub[$id] ?? '(tidak ditemukan)';
+                                    return esc($id) . ' - ' . esc($nama);
+                                }, $pjs);
+                                echo implode('<br>', $namaPJ);
+                            } else {
+                                echo '<span class="text-gray-400 italic">Belum ditentukan</span>';
+                            }
+                            ?>
+                        </td>
+
+
                         <td class="px-6 py-3 text-center space-x-2">
                             <button class="edit-btn text-blue-600 hover:underline" data-id="<?= esc($kat['id_kategori']) ?>">Edit</button>
                             <a href="<?= base_url('master/kategori/delete/' . $kat['id_kategori']) ?>"
@@ -30,6 +49,7 @@
                         </td>
                     </tr>
                 <?php endforeach; ?>
+
             </tbody>
         </table>
     </div>
@@ -47,6 +67,15 @@
 
             <label for="edit_nama_kategori" class="block font-semibold mb-1">Nama Kategori</label>
             <input type="text" name="nama_kategori" id="edit_nama_kategori" class="w-full border rounded px-3 py-2 mb-4" required />
+
+            <label for="edit_penanggung_jawab" class="block font-semibold mb-1">Penanggung Jawab</label>
+            <select multiple name="penanggung_jawab[]" id="edit_penanggung_jawab" class="w-full border rounded px-3 py-2 mb-4">
+                <option value="F38">F38 - IT Operation & Infrastructure</option>
+                <option value="F39">F39 - IT Solution & Development</option>
+                <option value="F42">F42 - HC Policy</option>
+                <option value="F43">F43 - HC Development</option>
+            </select>
+            <small class="text-gray-500">Tekan Ctrl (atau Cmd di Mac) untuk pilih lebih dari satu</small>
 
             <div class="flex justify-end space-x-3">
                 <button type="button" id="cancelBtn" class="px-4 py-2 rounded border border-gray-300 hover:bg-gray-100 transition">Batal</button>
@@ -76,6 +105,13 @@
                     $('#edit_id_kategori').val(res.id_kategori);
                     $('#edit_nama_kategori').val(res.nama_kategori);
                     $('#editModal').removeClass('hidden');
+                    if (res.penanggung_jawab) {
+                        $('#edit_penanggung_jawab option').prop('selected', false); // reset
+                        let selected = JSON.parse(res.penanggung_jawab);
+                        selected.forEach(function(val) {
+                            $(`#edit_penanggung_jawab option[value="${val}"]`).prop('selected', true);
+                        });
+                    }
                 },
                 error: function() {
                     alert('Gagal mengambil data kategori.');
@@ -101,6 +137,7 @@
                 method: 'POST',
                 data: {
                     nama_kategori: namaKategori,
+                    penanggung_jawab: $('#edit_penanggung_jawab').val(),
                     <?= csrf_token() ?>: csrfToken,
                 },
                 success: function(res) {

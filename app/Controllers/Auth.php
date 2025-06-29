@@ -31,10 +31,11 @@ class Auth extends Controller
 
         $db = Database::connect();
         $builder = $db->table('pegawai_penempatan as pp');
-        $builder->select('uu.id_unit_usaha, uu.nm_unit_usaha,uk.id_unit_kerja, uk.nm_unit_kerja, ul.id_unit_level, ul.nm_unit_level');
+        $builder->select('uu.id_unit_usaha, uu.nm_unit_usaha,uk.id_unit_kerja, uk.nm_unit_kerja, ul.id_unit_level, ul.nm_unit_level, uks.id_unit_kerja_sub, uks.nm_unit_kerja_sub');
         $builder->join('unit_usaha uu', 'pp.id_unit_usaha = uu.id_unit_usaha', 'left');
         $builder->join('unit_kerja uk', 'pp.id_unit_kerja = uk.id_unit_kerja', 'left');
-        $builder->join('unit_level ul', 'pp.id_unit_level = ul.id_unit_level', 'left');  // join tabel unit_level
+        $builder->join('unit_level ul', 'pp.id_unit_level = ul.id_unit_level', 'left');
+        $builder->join('unit_kerja_sub uks', 'pp.id_unit_kerja_sub = uks.id_unit_kerja_sub', 'left');
         $builder->where('pp.id_pegawai', $user['id_pegawai']);
         $penempatan = $builder->get()->getRowArray();
 
@@ -51,6 +52,8 @@ class Auth extends Controller
             'unit_kerja_id' => $penempatan['id_unit_kerja'] ?? '',
             'unit_level_id' => $penempatan['id_unit_level'] ?? '',
             'unit_level_name' => $penempatan['nm_unit_level'] ?? '',
+            'unit_kerja_sub_id' => $penempatan['id_unit_kerja_sub'] ?? '',
+            'unit_kerja_sub_name' => $penempatan['nm_unit_kerja_sub'] ?? '',
             'logged_in' => true,
         ]);
 

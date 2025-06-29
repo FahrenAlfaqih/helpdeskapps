@@ -23,6 +23,7 @@ class M_Tiket extends Model
         'deskripsi',
         'gambar',
         'id_unit_tujuan',
+        'id_unit_kerja_sub_tujuan',
         'kategori_id',
         'subkategori_id',
         'id_ruangan',

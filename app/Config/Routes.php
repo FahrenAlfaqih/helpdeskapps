@@ -11,6 +11,8 @@ $routes->get('/', function () {
 
 $routes->post('auth/login', 'Auth::login');
 $routes->get('auth/logout', 'Auth::logout');
+$routes->get('api/kategori/penanggung-jawab/(:any)', 'Api\Kategori::penanggungJawab/$1');
+
 
 // Dashboard
 // $routes->get('dashboard', function () {

@@ -15,6 +15,18 @@
                 class="w-full border rounded px-3 py-2" />
         </div>
 
+        <div>
+            <label for="penanggung_jawab" class="block font-semibold mb-1">Penanggung Jawab</label>
+            <select multiple name="penanggung_jawab[]" id="penanggung_jawab" class="w-full border rounded px-3 py-2">
+                <option value="F38">F38 - IT Operation & Infrastructure</option>
+                <option value="F39">F39 - IT Solution & Development</option>
+                <option value="F42">F42 - HC Policy</option>
+                <option value="F43">F43 - HC Development</option>
+            </select>
+            <small class="text-gray-500">Tekan Ctrl (atau Cmd di Mac) untuk memilih lebih dari satu.</small>
+        </div>
+
+
         <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-200">
             Simpan Kategori
         </button>

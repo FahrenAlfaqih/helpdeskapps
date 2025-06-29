@@ -20,15 +20,25 @@ class Kategori extends Controller
     public function index()
     {
         $unitUsaha = $this->session->get('unit_usaha_id');
+        $kategori = $this->kategoriModel->findAll();
 
-        $data['kategori'] = $this->kategoriModel->findAll();
+        $db = \Config\Database::connect();
+        $unitKerjaSubList = $db->table('unit_kerja_sub')
+            ->select('id_unit_kerja_sub, nm_unit_kerja_sub')
+            ->get()->getResultArray();
 
-        // $data['kategori'] = $this->kategoriModel
-        //     ->where('unit_usaha', $unitUsaha)
-        //     ->findAll();
+        // Buat mapping ID → Nama
+        $mapUnitKerjaSub = [];
+        foreach ($unitKerjaSubList as $uks) {
+            $mapUnitKerjaSub[$uks['id_unit_kerja_sub']] = $uks['nm_unit_kerja_sub'];
+        }
+
+        $data['kategori'] = $kategori;
+        $data['mapUnitKerjaSub'] = $mapUnitKerjaSub;
 
         return view('kategori/index', $data);
     }
+
 
     public function create()
     {
@@ -48,11 +58,12 @@ class Kategori extends Controller
         if (!$this->validate($rules)) {
             return redirect()->back()->withInput()->with('errors', $validation->getErrors());
         }
-
+        $penanggungJawab = $this->request->getPost('penanggung_jawab');
         $data = [
             'id_kategori' => $this->kategoriModel->generateIdKategori(),
             'nama_kategori' => $this->request->getPost('nama_kategori'),
             'unit_usaha' => $unitUsaha,
+            'penanggung_jawab' => json_encode($penanggungJawab),
         ];
 
         $this->kategoriModel->insert($data);
@@ -74,8 +85,13 @@ class Kategori extends Controller
             return $this->response->setJSON(['status' => 'error', 'message' => 'Akses ditolak'])->setStatusCode(403);
         }
 
-        return $this->response->setJSON($kategori);
+        return $this->response->setJSON([
+            'id_kategori' => $kategori['id_kategori'],
+            'nama_kategori' => $kategori['nama_kategori'],
+            'penanggung_jawab' => $kategori['penanggung_jawab'],
+        ]);
     }
+
 
     public function update($id = null)
     {
@@ -98,10 +114,12 @@ class Kategori extends Controller
 
         $this->kategoriModel->update($id, [
             'nama_kategori' => $this->request->getPost('nama_kategori'),
+            'penanggung_jawab' => json_encode($this->request->getPost('penanggung_jawab') ?? []),
         ]);
 
         return $this->response->setJSON(['status' => 'success', 'message' => 'Kategori berhasil diupdate.']);
     }
+
 
 
     public function delete($id)

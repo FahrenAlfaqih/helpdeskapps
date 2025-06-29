@@ -9,7 +9,7 @@ class M_Kategori extends Model
     protected $table = 'kategori';
     protected $primaryKey = 'id_kategori';
 
-    protected $allowedFields = ['id_kategori', 'nama_kategori', 'unit_usaha', 'created_at', 'updated_at'];
+    protected $allowedFields = ['id_kategori', 'nama_kategori', 'unit_usaha', 'penanggung_jawab', 'created_at', 'updated_at'];
 
     protected $useTimestamps = true;
     public function getSubKategori()
