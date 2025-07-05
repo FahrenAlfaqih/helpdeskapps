@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use CodeIgniter\Controller;
 use App\Models\M_Tiket;
+use App\Models\M_Tiket_Assigned;
 use Config\Database;
 use Carbon\Carbon;
 use Config\Services;
@@ -43,7 +44,6 @@ class Tickets extends Controller
         $emailService->setMessage($message);
         $emailService->send();
     }
-
 
     public function __construct()
     {
@@ -177,10 +177,8 @@ class Tickets extends Controller
         $builder->join('ruangan r', 't.id_ruangan = r.id_ruangan', 'left');
         $builder->where('t.id_pegawai_requestor', $idPegawai);
 
-        // Untuk hitung total data sebelum filter search
         $totalData = $builder->countAllResults(false);
 
-        // Jika ada pencarian
         if (!empty($searchValue)) {
             $builder->groupStart()
                 ->like('t.judul', $searchValue)
@@ -190,10 +188,8 @@ class Tickets extends Controller
                 ->groupEnd();
         }
 
-        // Hitung total setelah filter search
         $totalFiltered = $builder->countAllResults(false);
 
-        // Ambil data dengan limit dan offset
         $data = $builder->orderBy('t.created_at', 'DESC')
             ->limit($length, $start)
             ->get()
@@ -207,13 +203,13 @@ class Tickets extends Controller
         ]);
     }
 
-
     public function listForUnit()
     {
+        $unitUsahaFilter = $this->request->getGet('unit_usaha');
         $session = session();
         $idPegawai = $session->get('id_pegawai');
 
-        // Ambil penempatan pegawai (unit usaha dan unit kerja)
+        // Ambil data penempatan pegawai
         $builder = $this->db->table('pegawai_penempatan as pp');
         $builder->select('pp.id_unit_level, pp.id_unit_bisnis, pp.id_unit_usaha, pp.id_unit_organisasi, pp.id_unit_kerja, pp.id_unit_kerja_sub, pp.id_unit_lokasi');
         $builder->where('pp.id_pegawai', $idPegawai);
@@ -223,49 +219,54 @@ class Tickets extends Controller
             return $this->response->setJSON(['error' => 'Penempatan pegawai tidak ditemukan']);
         }
 
-        // Buat query tiket dengan join ke user untuk mendapatkan nama assigned pegawai dan requestor
+        // Cek apakah manager atau asman
+        $isManager = in_array($penempatan->id_unit_level, ['A8', 'A7']);
+
         $builder = $this->db->table('tiket t');
         $builder->select('t.*, u.nama as assigned_nama, ur.nama as requestor_nama');
         $builder->join('user u', 'u.id_pegawai = t.assigned_to', 'left');
-        $builder->join('user ur', 'ur.id_pegawai = t.id_pegawai_requestor', 'left'); // Join untuk requestor
+        $builder->join('user ur', 'ur.id_pegawai = t.id_pegawai_requestor', 'left');
 
-        $builder->groupStart();
-
-        // Cek jika user yang login adalah Korporat IT: unit_bisnis B1, unit_usaha C1, unit_kerja E13
-        if ($penempatan->id_unit_bisnis === 'B1' && $penempatan->id_unit_usaha === 'C1' && $penempatan->id_unit_kerja === 'E13') {
-
-            // Tiket open/in progress/done yang:
-            // - unit_bisnis_requestor = B1 dan unit_usaha_requestor = C1 (korporat) 
-            // OR
-            // - unit_bisnis_requestor = B3 dan unit_usaha_requestor NOT IN C1,C2,C3,C4,C5 (klinik)
+        // Filter utama
+        if ($isManager) {
+            // Manager & Asman: akses semua tiket (bisa filter dropdown)
+            $builder->whereIn('t.status', ['Open', 'In Progress', 'Done']);
+            $builder->where('t.id_unit_tujuan', $penempatan->id_unit_kerja);
+            if (!empty($unitUsahaFilter)) {
+                $builder->where('t.unit_usaha_requestor', $unitUsahaFilter);
+            }
+        } else if ($penempatan->id_unit_bisnis === 'B1' && $penempatan->id_unit_usaha === 'C1' && $penempatan->id_unit_kerja === 'E13') {
+            // Logic khusus tetap jalan untuk user ini
             $builder->groupStart();
             $builder->whereIn('t.status', ['Open', 'In Progress', 'Done']);
             $builder->groupStart();
-            // Korporat tiket
             $builder->where('t.unit_bisnis_requestor', 'B1');
             $builder->where('t.unit_usaha_requestor', 'C1');
             $builder->groupEnd();
             $builder->orGroupStart();
-            // Klinik tiket (unit_usaha NOT IN C1-C5)
             $builder->where('t.unit_bisnis_requestor', 'B3');
             $builder->whereNotIn('t.unit_usaha_requestor', ['C1', 'C2', 'C3', 'C4', 'C5']);
             $builder->groupEnd();
             $builder->groupEnd();
+            $builder->whereIn('t.id_unit_tujuan', ['E13', 'E21']);
 
-            $builder->whereIn('t.id_unit_tujuan', ['E13', 'E21']); // tujuan bisa E13 atau E21 untuk korporat IT
-
+            if (!empty($unitUsahaFilter)) {
+                $builder->where('t.unit_usaha_requestor', $unitUsahaFilter);
+            }
         } else {
-            // Untuk pegawai lain, tiket sesuai unit kerja dan unit usaha serta bisnis mereka
+            // Default: filter berdasarkan penempatan pegawai
             $builder->whereIn('t.status', ['Open', 'In Progress', 'Done']);
             $builder->where('t.id_unit_tujuan', $penempatan->id_unit_kerja);
             $builder->where('t.unit_bisnis_requestor', $penempatan->id_unit_bisnis);
             $builder->where('t.unit_usaha_requestor', $penempatan->id_unit_usaha);
+
+            if (!empty($unitUsahaFilter)) {
+                $builder->where('t.unit_usaha_requestor', $unitUsahaFilter);
+            }
         }
 
-        $builder->groupEnd();
-
+        // Tiket yang sudah closed (yang pernah diassign ke user)
         $builder->orGroupStart();
-        // Tiket yang sudah closed tapi assigned_to = pegawai ini (yang dikerjakan sendiri)
         $builder->where('t.status', 'Closed');
         $builder->where('t.assigned_to', $idPegawai);
         $builder->groupEnd();
@@ -274,71 +275,79 @@ class Tickets extends Controller
 
         $data = $builder->orderBy('t.created_at', 'DESC')->get()->getResultArray();
 
-        // Format tanggal created_at pake Carbon
         foreach ($data as &$ticket) {
             $ticket['created_at'] = \Carbon\Carbon::parse($ticket['created_at'])
                 ->locale('id')
                 ->isoFormat('D MMMM YYYY HH:mm');
         }
 
-        $response = [
+        return $this->response->setJSON([
             "draw" => (int) $this->request->getGet('draw'),
             "recordsTotal" => $totalData,
             "recordsFiltered" => $totalData,
             "data" => $data,
-        ];
-
-        return $this->response->setJSON($response);
+        ]);
     }
-
 
     public function takeTicket()
     {
         $session = session();
         $idPegawai = $session->get('id_pegawai');
         $idTiket = $this->request->getPost('id_tiket');
-        $status = $this->request->getPost('status') ?? 'In Progress'; // ambil status dari inputan
+        $status = $this->request->getPost('status') ?? 'In Progress';
         $komentarPenyelesaian = $this->request->getPost('komentar_penyelesaian') ?? null;
         $prioritas = $this->request->getPost('prioritas') ?? null;
         $komentarStaff = $this->request->getPost('komentar_staff') ?? null;
+        $assignedmodel =  new M_Tiket_Assigned();
+
 
         $ticket = $this->ticketModel->find($idTiket);
         if (!$ticket) {
             return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket tidak ditemukan']);
         }
-
         if ($ticket['assigned_to'] && $ticket['assigned_to'] != $idPegawai) {
             return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket sudah diambil oleh orang lain']);
         }
 
-        // Validasi komentar_staff wajib jika status = Done
         if ($status === 'Done' && (empty($komentarStaff) || trim($komentarStaff) === '')) {
             return $this->response->setJSON(['status' => 'error', 'message' => 'Komentar staff wajib diisi jika status tiket Done']);
         }
 
-        // Update data tiket
+        $lastAssignee = $assignedmodel->where('id_tiket', $idTiket)
+            ->orderBy('sequence', 'DESC')
+            ->first();
+
+        $sequence = $lastAssignee ? $lastAssignee['sequence'] + 1 : 1;
+
+
+        $assignedmodel->insert([
+            'id_tiket' => $idTiket,
+            'assigned_to' => $idPegawai,
+            'sequence' => $sequence,
+            'assigned_at' => date('Y-m-d H:i:s')
+        ]);
+
+
         $updateData = [
             'assigned_to' => $idPegawai,
-            'status' => $status, // langsung set status sesuai pilihan dropdown
+            'status' => $status,
             'komentar_penyelesaian' => $komentarPenyelesaian,
             'komentar_staff' => $komentarStaff,
             'updated_at' => date('Y-m-d H:i:s'),
         ];
-
         if (in_array($prioritas, ['High', 'Medium', 'Low'])) {
             $updateData['prioritas'] = $prioritas;
         }
 
         $this->ticketModel->update($idTiket, $updateData);
 
-        // Ambil data requestor untuk email
+
         $requestor = $this->db->table('user')
             ->select('email, nama')
             ->where('id_pegawai', $ticket['id_pegawai_requestor'])
             ->get()->getRow();
 
         if ($requestor) {
-            // Tentukan subject dan pesan email berdasarkan status
             if ($status === 'In Progress') {
                 $subject = "Tiket Anda Sedang Dalam Proses";
                 $message = "Halo {$requestor->nama},\n\nTiket dengan judul \"{$ticket['judul']}\" telah diambil dan sedang dalam proses pengerjaan.";
@@ -346,14 +355,11 @@ class Tickets extends Controller
                 $subject = "Tiket Anda Telah Selesai Dikerjakan";
                 $message = "Halo {$requestor->nama},\n\nTiket dengan judul \"{$ticket['judul']}\" telah selesai dikerjakan. Silakan cek dan konfirmasi.";
             }
-
-            // Kirim email sesuai status
             $this->sendEmailToRequestor($requestor->email, $ticket, $subject, $message);
         }
 
         return $this->response->setJSON(['status' => 'success', 'message' => 'Tiket berhasil diambil dan diperbarui']);
     }
-
 
     public function finish()
     {
@@ -404,6 +410,14 @@ class Tickets extends Controller
             return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket tidak ditemukan']);
         }
 
+        // Panggil model ticket_assignees
+        $assignedModel = new \App\Models\M_Tiket_Assigned();
+
+        // CARI assignee TERAKHIR (sequence terbesar)
+        $lastAssignee = $assignedModel->where('id_tiket', $idTiket)
+            ->orderBy('sequence', 'DESC')
+            ->first();
+
         if ($statusKonfirmasi === 'Closed') {
             if ($ticket['status'] !== 'Done') {
                 return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket belum berstatus Done']);
@@ -411,6 +425,15 @@ class Tickets extends Controller
 
             if (empty($komentar) || empty($ratingService) || empty($ratingTime)) {
                 return $this->response->setJSON(['status' => 'error', 'message' => 'Komentar, rating service dan rating waktu wajib diisi untuk menyelesaikan tiket']);
+            }
+
+            if ($lastAssignee) {
+                $assignedModel->update($lastAssignee['id'], [
+                    'komentar_penyelesaian' => $komentar,
+                    'rating_time' => $ratingTime,
+                    'rating_service' => $ratingService,
+                    'finished_at' => date('Y-m-d H:i:s'),
+                ]);
             }
 
             $updateData = [
@@ -422,6 +445,15 @@ class Tickets extends Controller
                 'updated_at' => date('Y-m-d H:i:s'),
             ];
         } elseif ($statusKonfirmasi === 'Open') {
+            // ----------- MODIFIKASI UTAMA DISINI -----------
+            if ($lastAssignee) {
+                $assignedModel->update($lastAssignee['id'], [
+                    'komentar_penyelesaian' => $komentar, // Simpan feedback requestor juga di histori petugas
+                    'finished_at' => date('Y-m-d H:i:s'),
+                    // rating_time dan rating_service dibiarkan null
+                ]);
+            }
+
             $updateData = [
                 'status' => 'Open',
                 'assigned_to' => null,
@@ -437,11 +469,9 @@ class Tickets extends Controller
             return $this->response->setJSON(['status' => 'error', 'message' => 'Status tidak valid']);
         }
 
-        // Lakukan update dan cek apakah berhasil
         $result = $this->ticketModel->update($idTiket, $updateData);
 
         if (!$result) {
-            // Ambil error jika update gagal
             return $this->response->setJSON([
                 'status' => 'error',
                 'message' => 'Gagal mengupdate tiket',
@@ -452,11 +482,16 @@ class Tickets extends Controller
         return $this->response->setJSON(['status' => 'success', 'message' => 'Konfirmasi berhasil disimpan']);
     }
 
-
-
     public function boardStaffView()
     {
-        return view('tickets/board_staff');
+        $db = \Config\Database::connect();
+
+        $unitUsahaList = $db->table('unit_usaha')
+            ->select('id_unit_usaha, nm_unit_usaha')
+            ->orderBy('nm_unit_usaha', 'ASC')
+            ->get()
+            ->getResultArray();
+        return view('tickets/board_staff', ['unitUsahaList' => $unitUsahaList]);
     }
 
     public function detail($id)
@@ -513,7 +548,26 @@ class Tickets extends Controller
             return $this->response->setJSON(['status' => 'error', 'message' => 'Tiket tidak ditemukan']);
         }
 
-        // Format created_at dan updated_at untuk waktu yang lebih mudah dibaca
+        // Ambil histori penugasan (multi petugas)
+        $assignees = $this->db->table('ticket_assignees ta')
+            ->select([
+                'ta.sequence',
+                'ta.assigned_at',
+                'ta.finished_at',
+                'ta.komentar_penyelesaian',
+                'ta.komentar_staff',
+                'ta.rating_time',
+                'ta.rating_service',
+                'u.nama as assigned_nama',
+                'p.telpon1 as assigned_telpon1',
+                'p.telpon2 as assigned_telpon2'
+            ])
+            ->join('user u', 'u.id_pegawai = ta.assigned_to', 'left')
+            ->join('pegawai p', 'p.id_pegawai = ta.assigned_to', 'left')
+            ->where('ta.id_tiket', $id)
+            ->orderBy('ta.sequence', 'ASC')
+            ->get()->getResultArray();
+
         $createdAt = Carbon::parse($ticket['created_at'])->locale('id')->isoFormat('D MMMM YYYY, HH:mm');
         $updatedAt = Carbon::parse($ticket['updated_at'])->locale('id')->isoFormat('D MMMM YYYY, HH:mm');
 
@@ -550,7 +604,8 @@ class Tickets extends Controller
             ],
 
             'created_at' => $createdAt,
-            'updated_at' => $updatedAt, // Add updated_at for the completion time
+            'updated_at' => $updatedAt,
+            'assignees' => $assignees,
         ];
 
         return $this->response->setJSON(['status' => 'success', 'data' => $data]);

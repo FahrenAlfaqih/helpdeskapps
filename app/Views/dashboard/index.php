@@ -61,6 +61,28 @@
     <h2 class="text-xl font-semibold mb-4">Status Tiket Anda</h2>
     <canvas id="statusChart" height="150"></canvas>
   </div>
+
+  <?php if (in_array($unit_kerja_id, ['E13', 'E21'])): ?>
+
+    <div class="max-w-7xl bg-white rounded-2xl p-6 shadow max-w-3xl mt-10">
+      <h2 class="text-xl font-semibold mb-4">Tiket Masuk per Bulan (<?= date('Y') ?>)</h2>
+      <canvas id="monthlyChart" height="150"></canvas>
+    </div>
+
+    <div class="grid grid-cols-2 gap-6 mt-6">
+      <div class="bg-green-100 rounded-xl p-6 shadow text-center">
+        <h3 class="text-sm text-green-800 font-semibold">Rata-Rata Rating Waktu</h3>
+        <p class="text-4xl font-bold text-green-900 mt-2"><?= esc($avgTime) ?></p>
+      </div>
+      <div class="bg-yellow-100 rounded-xl p-6 shadow text-center">
+        <h3 class="text-sm text-yellow-800 font-semibold">Rata-Rata Rating Layanan</h3>
+        <p class="text-4xl font-bold text-yellow-900 mt-2"><?= esc($avgService) ?></p>
+      </div>
+    </div>
+
+  <?php endif; ?>
+
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -99,6 +121,41 @@
         y: {
           beginAtZero: true,
           precision: 0,
+          ticks: {
+            stepSize: 1
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        }
+      }
+    }
+  });
+
+  const ctx2 = document.getElementById('monthlyChart').getContext('2d');
+  const bulanLabels = <?= json_encode($bulanLabels) ?>;
+  const jumlahTiketBulan = <?= json_encode($jumlahTiketBulan) ?>;
+
+  new Chart(ctx2, {
+    type: 'line',
+    data: {
+      labels: bulanLabels,
+      datasets: [{
+        label: 'Tiket Masuk',
+        data: jumlahTiketBulan,
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true,
           ticks: {
             stepSize: 1
           }

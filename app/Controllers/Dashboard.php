@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\M_Tiket;
 use CodeIgniter\Controller;
+use CodeIgniter\Database\RawSql;
 
 class Dashboard extends Controller
 {
@@ -76,13 +77,56 @@ class Dashboard extends Controller
             ->countAllResults(false);
 
 
-        // Mengirim data ke view
+        $unitKerjaId = $session->get('unit_kerja_id');
+
+
+        $bulanLabels = [];
+        $jumlahTiketBulan = [];
+        $avgTime = 0;
+        $avgService = 0;
+
+        if (in_array($unitKerjaId, ['E13', 'E21'])) {
+            // Tiket per bulan
+            $tiketPerBulan = $this->ticketModel
+                ->select("MONTH(created_at) as bulan, COUNT(*) as total")
+                ->where('YEAR(created_at)', date('Y'))
+                ->where('id_unit_tujuan IS NOT NULL')
+                ->groupBy('MONTH(created_at)')
+                ->orderBy('MONTH(created_at)')
+                ->findAll();
+
+            for ($i = 1; $i <= 12; $i++) {
+                $bulanLabels[] = date('F', mktime(0, 0, 0, $i, 1));
+                $jumlahTiketBulan[] = 0;
+            }
+
+            foreach ($tiketPerBulan as $row) {
+                $index = (int)$row['bulan'] - 1;
+                $jumlahTiketBulan[$index] = $row['total'];
+            }
+
+            // Rating
+            $ratingAvg = $this->ticketModel
+                ->select('AVG(rating_time) as avg_time, AVG(rating_service) as avg_service')
+                ->whereIn('id_unit_tujuan', ['E13', 'E21'])
+                ->get()
+                ->getRow();
+
+            $avgTime = round($ratingAvg->avg_time ?? 0, 2);
+            $avgService = round($ratingAvg->avg_service ?? 0, 2);
+        }
+
         $data = [
+            'unit_kerja_id' => $unitKerjaId,
             'statusCounts' => $statusCounts,
             'totalTiketUser' => $totalTiketUser,
             'totalTiketToUnitF' => $totalTiketToUnitF,
             'totalTiketToUnitG' => $totalTiketToUnitG,
             'totalTiketUnresolved' => $totalTiketUnresolved,
+            'bulanLabels' => $bulanLabels,
+            'jumlahTiketBulan' => $jumlahTiketBulan,
+            'avgTime' => $avgTime,
+            'avgService' => $avgService,
         ];
 
         return view('dashboard/index', $data);

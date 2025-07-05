@@ -2,7 +2,23 @@
 <?= $this->section('content') ?>
 
 <div class="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow-md">
+
+
+
     <h2 class="text-3xl font-bold mb-6 text-blue-900 border-b border-blue-300 pb-2 select-none">Daftar Tiket Unit Saya</h2>
+    <!-- Filter Unit Usaha -->
+    <?php if (in_array(session('unit_level_id'), ['A8', 'A7'])): ?>
+        <div class="mb-6">
+            <label for="filterUnitUsaha" class="block mb-2 font-semibold text-gray-700">Filter Berdasarkan Unit Usaha:</label>
+            <select id="filterUnitUsaha" class="border px-3 py-2 rounded w-full max-w-sm">
+                <option value="">-- Semua Unit Usaha --</option>
+                <?php foreach ($unitUsahaList as $usaha): ?>
+                    <option value="<?= esc($usaha['id_unit_usaha']) ?>"><?= esc($usaha['nm_unit_usaha']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    <?php endif; ?>
+
 
     <!-- Tabs Status -->
     <div class="flex space-x-4 mb-6 border-b border-gray-300">
@@ -81,6 +97,8 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+
 
 
 <script>
@@ -160,14 +178,18 @@
         `;
         }
 
-        // Load tiket sesuai status
+
         function loadTickets(status) {
             currentStatus = status;
             $ticketsContainer.empty();
             $noTickets.hide();
             $loading.show();
 
-            $.getJSON("<?= base_url('tickets/list-for-unit') ?>", function(res) {
+            const unitUsaha = $('#filterUnitUsaha').val();
+
+            $.getJSON("<?= base_url('tickets/list-for-unit') ?>", {
+                unit_usaha: unitUsaha
+            }, function(res) {
                 $loading.hide();
                 if (res.data && res.data.length) {
                     // Filter berdasarkan status
@@ -184,6 +206,10 @@
                 }
             });
         }
+
+        $('#filterUnitUsaha').on('change', function() {
+            loadTickets(currentStatus);
+        });
 
         // Event klik tab status
         $('.status-tab').click(function() {
@@ -282,95 +308,164 @@
             });
         });
 
-        // Event detail tiket
         $ticketsContainer.on('click', '.detail-btn', function() {
             const idTiket = $(this).data('id');
             $.getJSON(`<?= base_url('tickets/detail') ?>/${idTiket}`, function(response) {
                 if (response.status === 'success') {
                     const data = response.data;
                     let imgHtml = data.gambar ?
-                        `<img src="<?= base_url('uploads/') ?>${encodeURIComponent(data.gambar)}" alt="Gambar Tiket" class="w-full h-64 object-cover rounded-t-lg">` :
+                        `<img src="<?= base_url('uploads/') ?>${encodeURIComponent(data.gambar)}" alt="Gambar Tiket" class="w-full h-64 object-cover rounded-lg mb-6 border border-gray-300">` :
                         '<p class="italic text-gray-500">Tidak ada gambar.</p>';
+
+                    // Histori Petugas
+                    let assigneesHtml = '';
+                    if (data.assignees && data.assignees.length > 0) {
+                        assigneesHtml = `
+                <h4 class="font-semibold mb-2 text-blue-900">Histori Petugas</h4>
+                <div class="overflow-x-auto">
+                <table class="min-w-full border text-xs text-left mb-3">
+                    <thead>
+                        <tr>
+                            <th class="py-2 px-3 border-b">#</th>
+                            <th class="py-2 px-3 border-b">Nama Petugas</th>
+                            <th class="py-2 px-3 border-b">Telepon 1</th>
+                            <th class="py-2 px-3 border-b">Waktu Mulai</th>
+                            <th class="py-2 px-3 border-b">Waktu Selesai</th>
+                            <th class="py-2 px-3 border-b">Komentar</th>
+                            <th class="py-2 px-3 border-b">Rating Waktu</th>
+                            <th class="py-2 px-3 border-b">Rating Layanan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.assignees.map((a, idx) => `
+                            <tr>
+                                <td class="py-2 px-3 border-b">${a.sequence}</td>
+                                <td class="py-2 px-3 border-b">${a.assigned_nama || '-'}</td>
+                                <td class="py-2 px-3 border-b">${a.assigned_telpon1 || '-'}</td>
+                                <td class="py-2 px-3 border-b">${a.assigned_at ? dayjs(a.assigned_at).format('DD MMM YYYY HH:mm') : '-'}</td>
+                                <td class="py-2 px-3 border-b">${a.finished_at ? dayjs(a.finished_at).format('DD MMM YYYY HH:mm') : '-'}</td>
+                                <td class="py-2 px-3 border-b">${a.komentar_penyelesaian || '-'}</td>
+                                <td class="py-2 px-3 border-b">${a.rating_time ? ratingTimeText(a.rating_time) : '-'}</td>
+                                <td class="py-2 px-3 border-b">${a.rating_service ? ratingServiceText(a.rating_service) : '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                </div>
+                `;
+                    } else {
+                        assigneesHtml = `<p class="italic text-gray-500">Belum ada histori petugas.</p>`;
+                    }
+
+                    // Fungsi format durasi
+                    function formatDuration(seconds) {
+                        if (!seconds || seconds < 0) return '-';
+                        const d = Math.floor(seconds / 86400);
+                        const h = Math.floor((seconds % 86400) / 3600);
+                        const m = Math.floor((seconds % 3600) / 60);
+                        const s = seconds % 60;
+                        let str = '';
+                        if (d) str += d + ' hari ';
+                        if (h) str += h + ' jam ';
+                        if (m) str += m + ' menit ';
+                        if (s || (!d && !h && !m)) str += s + ' detik';
+                        return str.trim();
+                    }
+
+                    // Info waktu pengerjaan
+                    const lastAssignee = data.assignees && data.assignees.length > 0 ? data.assignees[data.assignees.length - 1] : null;
+                    let waktuPengerjaanHtml = '';
+                    if (lastAssignee) {
+                        let assignedAt = lastAssignee.assigned_at ? dayjs(lastAssignee.assigned_at).format('D MMM YYYY, HH:mm') : '-';
+                        let finishedAt = lastAssignee.finished_at ? dayjs(lastAssignee.finished_at).format('D MMM YYYY, HH:mm') : '-';
+                        let durasi = '-';
+                        if (lastAssignee.assigned_at && lastAssignee.finished_at) {
+                            let dur = dayjs(lastAssignee.finished_at).diff(dayjs(lastAssignee.assigned_at), 'second');
+                            durasi = formatDuration(dur);
+                        }
+                        waktuPengerjaanHtml = `
+                    <h4 class="font-semibold mb-2 text-blue-900">Waktu Pengerjaan</h4>
+                    <p><span class="font-semibold">Tiket diproses</span> : ${assignedAt}</p>
+                    <p><span class="font-semibold">Tiket selesai</span> : ${finishedAt}</p>
+                    <p><span class="font-semibold">Durasi pengerjaan</span> : ${durasi}</p>
+                `;
+                    }
 
                     let html = `
 <div class="space-y-6 text-gray-800 text-sm">
-
     ${imgHtml}
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-
         <div>
-        <h4 class="font-semibold mb-2 text-blue-900">Informasi Requestor & Penempatan</h4>
-        <p><span class="font-semibold">Dibuat oleh:</span> ${data.requestor_nama}</p>
-        <p><span class="font-semibold">Telepon 1:</span> ${data.requestor_telpon1 || '-'}</p>
-        <p><span class="font-semibold">Telepon 2:</span> ${data.requestor_telpon2 || '-'}</p>
-        <p><span class="font-semibold">Email:</span> ${data.requestor_email || '-'}</p>
-        <p><span class="font-semibold mt-4 block">Penempatan:</span></p>
-        <ul class="list-disc list-inside ml-5 space-y-0.5 text-sm">
-            <li><strong>Level:</strong> ${data.req_penempatan.unit_level}</li>
-            <li><strong>Bisnis:</strong> ${data.req_penempatan.unit_bisnis}</li>
-            <li><strong>Usaha:</strong> ${data.req_penempatan.unit_usaha}</li>
-            <li><strong>Organisasi:</strong> ${data.req_penempatan.unit_organisasi}</li>
-            <li><strong>Kerja:</strong> ${data.req_penempatan.unit_kerja}</li>
-            <li><strong>Kerja Sub:</strong> ${data.req_penempatan.unit_kerja_sub}</li>
-            <li><strong>Lokasi:</strong> ${data.req_penempatan.unit_lokasi}</li>
-        </ul>
+            <h4 class="font-semibold mb-2 text-blue-900">Informasi Requestor & Penempatan</h4>
+            <p><span class="font-semibold">Dibuat oleh:</span> ${data.requestor_nama}</p>
+            <p><span class="font-semibold">Telepon 1:</span> ${data.requestor_telpon1 || '-'}</p>
+            <p><span class="font-semibold">Telepon 2:</span> ${data.requestor_telpon2 || '-'}</p>
+            <p><span class="font-semibold">Email:</span> ${data.requestor_email || '-'}</p>
+            <p><span class="font-semibold mt-4 block">Penempatan:</span></p>
+            <ul class="list-disc list-inside ml-5 space-y-0.5 text-sm">
+                <li><strong>Level:</strong> ${data.req_penempatan.unit_level}</li>
+                <li><strong>Bisnis:</strong> ${data.req_penempatan.unit_bisnis}</li>
+                <li><strong>Usaha:</strong> ${data.req_penempatan.unit_usaha}</li>
+                <li><strong>Organisasi:</strong> ${data.req_penempatan.unit_organisasi}</li>
+                <li><strong>Kerja:</strong> ${data.req_penempatan.unit_kerja}</li>
+                <li><strong>Kerja Sub:</strong> ${data.req_penempatan.unit_kerja_sub}</li>
+                <li><strong>Lokasi:</strong> ${data.req_penempatan.unit_lokasi}</li>
+            </ul>
+        </div>
+        <div>
+            <h4 class="font-semibold mb-2 text-blue-900">Informasi Tiket</h4>
+            <p><span class="font-semibold">Judul:</span> ${data.judul}</p>
+            <p><span class="font-semibold">Deskripsi:</span></p>
+            <div class="prose max-w-none text-gray-800">${data.deskripsi}</div>
+            <p><span class="font-semibold">Prioritas:</span> <span class="text-${data.prioritas.toLowerCase()}-600 font-semibold">${data.prioritas}</span></p>
+            <p><span class="font-semibold">Status:</span> <span class="inline-block px-2 py-1 rounded bg-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-100 text-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-600 text-xs font-semibold">${data.status}</span></p>
+            <p><span class="font-semibold">Waktu Penugasan:</span> ${data.updated_at}</p>
+        </div>
+    </div>
+    <hr class="border-gray-300 my-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div>
+            <h4 class="font-semibold mb-2 text-blue-900">Penugasan</h4>
+            <p><span class="font-semibold">Ditugaskan kepada:</span> ${data.assigned_nama || 'Tidak ditugaskan'}</p>
+            <p><span class="font-semibold">Telepon 1:</span> ${data.assigned_telpon1 || '-'}</p>
+            <p><span class="font-semibold">Telepon 2:</span> ${data.assigned_telpon2 || '-'}</p>
+            <p><span class="font-semibold">Ruangan:</span> ${data.nm_ruangan}</p>
+        </div>
+        <div>
+            ${waktuPengerjaanHtml}
+        </div>
+        <div>
+            <h4 class="font-semibold mb-2 text-blue-900">Komentar & Rating</h4>
+            <p><strong>Komentar Penyelesaian:</strong></p>
+            <p class="italic text-gray-600 mb-3">${data.komentar_penyelesaian || 'Tidak ada komentar.'}</p>
+            <p><strong>Komentar Staff:</strong></p>
+            <p class="italic text-gray-600 mb-3">${data.komentar_staff || 'Tidak ada komentar dari staff.'}</p>
+            <p><strong>Rating Waktu:</strong> ${data.rating_time ? ratingTimeText(data.rating_time) : '-'}</p>
+            <p><strong>Rating Layanan:</strong> ${data.rating_service ? ratingServiceText(data.rating_service) : '-'}</p>
+        </div>
     </div>
 
-  <div>
-    <h4 class="font-semibold mb-2 text-blue-900">Informasi Tiket</h4>
-    <p><span class="font-semibold">Judul:</span> ${data.judul}</p>
-    <p><span class="font-semibold">Deskripsi:</span></p>
-    <div class="prose max-w-none text-gray-800">${data.deskripsi}</div>
-
-    <p><span class="font-semibold">Prioritas:</span> <span class="text-${data.prioritas.toLowerCase()}-600 font-semibold">${data.prioritas}</span></p>
-    <p><span class="font-semibold">Status:</span> <span class="inline-block px-2 py-1 rounded bg-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-100 text-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-600 text-xs font-semibold">${data.status}</span></p>
-    <p><span class="font-semibold">Waktu Pengerjaan:</span> ${data.updated_at}</p> <!-- Add the updated_at here -->
-  </div>
-
-</div>
-<hr class="border-gray-300 my-6">
-
-<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-    <div>
-        <h4 class="font-semibold mb-2 text-blue-900">Penugasan</h4>
-        <p><span class="font-semibold">Ditugaskan kepada:</span> ${data.assigned_nama || 'Tidak ditugaskan'}</p>
-        <p><span class="font-semibold">Telepon 1:</span> ${data.assigned_telpon1 || '-'}</p>
-        <p><span class="font-semibold">Telepon 2:</span> ${data.assigned_telpon2 || '-'}</p>
-        <p><span class="font-semibold">Ruangan:</span> ${data.nm_ruangan}</p>
+    <div class="mt-6">
+        ${assigneesHtml}
     </div>
 
-    <div>
-        <h4 class="font-semibold mb-2 text-blue-900">Komentar & Rating</h4>
-        <p><strong>Komentar Penyelesaian:</strong></p>
-        <p class="italic text-gray-600 mb-3">${data.komentar_penyelesaian || 'Tidak ada komentar.'}</p>
-
-        <p><strong>Komentar Staff:</strong></p>
-        <p class="italic text-gray-600 mb-3">${data.komentar_staff || 'Tidak ada komentar dari staff.'}</p>
-
-        <p><strong>Rating Waktu:</strong> ${data.rating_time ? ratingTimeText(data.rating_time) : '-'}</p>
-        <p><strong>Rating Layanan:</strong> ${data.rating_service ? ratingServiceText(data.rating_service) : '-'}</p>
-    </div>
+    <p class="text-right text-sm text-gray-500 mt-6">Dibuat pada: ${data.created_at}</p>
 </div>
+            `;
 
-<p class="text-right text-xs text-gray-500 mt-6">Dibuat pada: ${data.created_at}</p>
-</div>
-`;
-
-$('#ticketDetails').html(html);
-$('#ticketDetailModal').removeClass('hidden');
-
+                    $('#ticketDetails').html(html);
+                    $('#ticketDetailModal').removeClass('hidden');
                 } else {
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal',
-                        text: response.message || 'Gagal memuat detail tiket'
+                        text: response.message || 'Gagal memuat detail tiket',
                     });
                 }
             });
         });
 
-        // Close modal
         $('#closeModal').on('click', function() {
             $('#ticketDetailModal').addClass('hidden');
             $('#ticketDetails').html('');

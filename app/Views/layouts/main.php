@@ -84,7 +84,7 @@
                 </a>
             <?php endif; ?>
 
-            <?php if ($unitLevelId === 'A13'): ?>
+            <?php if ($unitLevelId === 'A13' || $unitLevelId === 'A7' || $unitLevelId === 'A8'): ?>
                 <a href="/master/kategori"
                     class="block py-2 px-4 rounded-lg transition duration-200 ease-in-out
             <?= $uri->getSegment(1) == 'master' && $uri->getSegment(2) == 'kategori' ? 'text-blue-600 bg-blue-50 font-semibold' : 'hover:bg-blue-100 hover:text-blue-700' ?>">

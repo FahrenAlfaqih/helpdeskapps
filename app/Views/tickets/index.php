@@ -109,6 +109,8 @@
 <link href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+
 
 
 <script>
@@ -172,6 +174,79 @@
                         `<img src="<?= base_url('uploads/') ?>${encodeURIComponent(data.gambar)}" alt="Gambar Tiket" class="w-full h-64 object-cover rounded-lg mb-6 border border-gray-300">` :
                         '<p class="italic text-gray-500">Tidak ada gambar.</p>';
 
+                    let assigneesHtml = '';
+                    if (data.assignees && data.assignees.length > 0) {
+                        assigneesHtml = `
+                <h4 class="font-semibold mb-2 text-blue-900">Histori Petugas</h4>
+                <div class="overflow-x-auto">
+                <table class="min-w-full border text-xs text-left mb-3">
+                    <thead>
+                        <tr>
+                            <th class="py-2 px-3 border-b">#</th>
+                            <th class="py-2 px-3 border-b">Nama Petugas</th>
+                            <th class="py-2 px-3 border-b">Telepon 1</th>
+                            <th class="py-2 px-3 border-b">Waktu Mulai</th>
+                            <th class="py-2 px-3 border-b">Waktu Selesai</th>
+                            <th class="py-2 px-3 border-b">Komentar</th>
+                            <th class="py-2 px-3 border-b">Rating Waktu</th>
+                            <th class="py-2 px-3 border-b">Rating Layanan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.assignees.map((a, idx) => `
+                            <tr>
+                                <td class="py-2 px-3 border-b">${a.sequence}</td>
+                                <td class="py-2 px-3 border-b">${a.assigned_nama || '-'}</td>
+                                <td class="py-2 px-3 border-b">${a.assigned_telpon1 || '-'}</td>
+                                <td class="py-2 px-3 border-b">${a.assigned_at ? dayjs(a.assigned_at).format('DD MMM YYYY HH:mm') : '-'}</td>
+                                <td class="py-2 px-3 border-b">${a.finished_at ? dayjs(a.finished_at).format('DD MMM YYYY HH:mm') : '-'}</td>
+                                <td class="py-2 px-3 border-b">${a.komentar_penyelesaian || '-'}</td>
+                                <td class="py-2 px-3 border-b">${a.rating_time ? ratingTimeText(a.rating_time) : '-'}</td>
+                                <td class="py-2 px-3 border-b">${a.rating_service ? ratingServiceText(a.rating_service) : '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                </div>
+                `;
+                    } else {
+                        assigneesHtml = `<p class="italic text-gray-500">Belum ada histori petugas.</p>`;
+                    }
+
+                    // Fungsi format durasi dari detik ke string
+            function formatDuration(seconds) {
+                if (!seconds || seconds < 0) return '-';
+                const d = Math.floor(seconds / 86400);
+                const h = Math.floor((seconds % 86400) / 3600);
+                const m = Math.floor((seconds % 3600) / 60);
+                const s = seconds % 60;
+                let str = '';
+                if (d) str += d + ' hari ';
+                if (h) str += h + ' jam ';
+                if (m) str += m + ' menit ';
+                if (s || (!d && !h && !m)) str += s + ' detik';
+                return str.trim();
+            }
+
+            // Ambil last assignee (petugas terakhir)
+            const lastAssignee = data.assignees && data.assignees.length > 0 ? data.assignees[data.assignees.length - 1] : null;
+            let waktuPengerjaanHtml = '';
+            if (lastAssignee) {
+                let assignedAt = lastAssignee.assigned_at ? dayjs(lastAssignee.assigned_at).format('D MMM YYYY, HH:mm') : '-';
+                let finishedAt = lastAssignee.finished_at ? dayjs(lastAssignee.finished_at).format('D MMM YYYY, HH:mm') : '-';
+                let durasi = '-';
+                if (lastAssignee.assigned_at && lastAssignee.finished_at) {
+                    let dur = dayjs(lastAssignee.finished_at).diff(dayjs(lastAssignee.assigned_at), 'second');
+                    durasi = formatDuration(dur);
+                }
+                waktuPengerjaanHtml = `
+                    <h4 class="font-semibold mb-2 text-blue-900">Waktu Pengerjaan</h4>
+                    <p><span class="font-semibold">Tiket diproses</span> : ${assignedAt}</p>
+                    <p><span class="font-semibold">Tiket selesai</span> : ${finishedAt}</p>
+                    <p><span class="font-semibold">Durasi pengerjaan</span> : ${durasi}</p>
+                `;
+            }
+
                     let html = `
 <div class="space-y-6 text-gray-800 text-sm">
 
@@ -179,7 +254,7 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-            <div>
+        <div>
             <h4 class="font-semibold mb-2 text-blue-900">Informasi Requestor & Penempatan</h4>
             <p><span class="font-semibold">Dibuat oleh:</span> ${data.requestor_nama}</p>
             <p><span class="font-semibold">Telepon 1:</span> ${data.requestor_telpon1 || '-'}</p>
@@ -196,26 +271,23 @@
                 <li><strong>Lokasi:</strong> ${data.req_penempatan.unit_lokasi}</li>
             </ul>
         </div>
-  <div>
-    <h4 class="font-semibold mb-2 text-blue-900">Informasi Tiket</h4>
-    <p><span class="font-semibold">Judul:</span> ${data.judul}</p>
+        <div>
+            <h4 class="font-semibold mb-2 text-blue-900">Informasi Tiket</h4>
+            <p><span class="font-semibold">Judul:</span> ${data.judul}</p>
 
-    <p><span class="font-semibold">Deskripsi:</span></p>
-    <div class="prose max-w-none text-gray-800">${data.deskripsi}</div>
+            <p><span class="font-semibold">Deskripsi:</span></p>
+            <div class="prose max-w-none text-gray-800">${data.deskripsi}</div>
 
-    <p><span class="font-semibold">Prioritas:</span> <span class="text-${data.prioritas.toLowerCase()}-600 font-semibold">${data.prioritas}</span></p>
-    <p><span class="font-semibold">Status:</span> <span class="inline-block px-2 py-1 rounded bg-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-100 text-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-600 text-xs font-semibold">${data.status}</span></p>
-      <p><span class="font-semibold">Waktu Penugasan:</span> ${data.updated_at}</p> <!-- Add the updated_at here -->
-
-    </div>
-
-
+            <p><span class="font-semibold">Prioritas:</span> <span class="text-${data.prioritas.toLowerCase()}-600 font-semibold">${data.prioritas}</span></p>
+            <p><span class="font-semibold">Status:</span> <span class="inline-block px-2 py-1 rounded bg-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-100 text-${data.status === 'Closed' ? 'gray' : (data.status === 'Done' ? 'blue' : 'yellow')}-600 text-xs font-semibold">${data.status}</span></p>
+            <p><span class="font-semibold">Waktu Penugasan:</span> ${data.updated_at}</p>
+        </div>
 
     </div>
 
     <hr class="border-gray-300 my-6">
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 
         <div>
             <h4 class="font-semibold mb-2 text-blue-900">Penugasan</h4>
@@ -223,6 +295,10 @@
             <p><span class="font-semibold">Telepon 1:</span> ${data.assigned_telpon1 || '-'}</p>
             <p><span class="font-semibold">Telepon 2:</span> ${data.assigned_telpon2 || '-'}</p>
             <p><span class="font-semibold">Ruangan:</span> ${data.nm_ruangan}</p>
+        </div>
+
+        <div>
+            ${waktuPengerjaanHtml}
         </div>
 
         <div>
@@ -237,6 +313,10 @@
             <p><strong>Rating Layanan:</strong> ${data.rating_service ? ratingServiceText(data.rating_service) : '-'}</p>
         </div>
 
+    </div>
+
+    <div class="mt-6">
+        ${assigneesHtml}
     </div>
 
     <p class="text-right text-sm text-gray-500 mt-6">Dibuat pada: ${data.created_at}</p>
@@ -296,6 +376,8 @@
                     return "-";
             }
         }
+
+
 
         $('#status').on('change', function() {
             const selected = $(this).val();
